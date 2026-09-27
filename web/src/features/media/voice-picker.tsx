@@ -9,7 +9,7 @@ import { Upload, Mic, Square, Play, X, AudioLines } from 'lucide-react';
 import { call, importVoiceFile, mediaUrl, isMac, CallError } from '../../shared/lib/client';
 import { encodeWav, toBase64 } from '../../shared/lib/sound';
 import { formatCallError } from '../../shared/i18n/format';
-import { Player } from './Player';
+import { Player } from './player';
 import { formatTime, type Track, type Voice } from '../../shared/workbench';
 
 export function VoicePicker({ voices, onClose, onSelect, adding = false }: { adding?: boolean; voices: Voice[]; onClose: () => void; onSelect: (v: Voice) => void }) {

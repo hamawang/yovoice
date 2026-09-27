@@ -1,4 +1,4 @@
-import { draftCopy } from './i18n/draftCopy';
+import { draftCopy } from './i18n/draft-copy';
 
 export type Mode = 'speaker' | 'reference' | 'vector' | 'text';
 export interface SynthesisSettings {

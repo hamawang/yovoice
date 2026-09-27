@@ -14,7 +14,7 @@ func TestMessageCodesCoveredByCatalogs(t *testing.T) {
 		t.Fatal("caller")
 	}
 	root := filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "web", "src", "shared", "i18n", "catalogs"))
-	for _, name := range []string{"en.json", "zh-CN.json"} {
+	for _, name := range []string{"en.json", "zh-cn.json"} {
 		b, err := os.ReadFile(filepath.Join(root, name))
 		if err != nil {
 			t.Fatal(err)

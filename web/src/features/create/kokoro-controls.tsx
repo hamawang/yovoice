@@ -1,8 +1,8 @@
 import { VStack } from '@astryxdesign/core/Layout';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { Selector } from '../../shared/Selector';
+import { Selector } from '../../shared/selector';
 import type { Draft, ModelPackage } from '../../shared/workbench';
-import { ModelOptions } from './ModelOptions';
+import { ModelOptions } from './model-options';
 
 const languages: Record<string, string> = { a: 'en-us', b: 'en-gb', e: 'es', f: 'fr-fr', h: 'hi', i: 'it', j: 'ja', p: 'pt-br', z: 'zh' };
 

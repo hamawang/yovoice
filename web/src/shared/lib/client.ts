@@ -1,7 +1,7 @@
 import catalog from './catalog.json';
 import { emptyState, type Draft, type State, type Voice, type Preferences, type Character } from '../workbench';
 import { encodeWav, toBase64 } from './sound';
-import { CallError, parseCallError } from './callError';
+import { CallError, parseCallError } from './call-error';
 
 export { CallError, parseCallError };
 

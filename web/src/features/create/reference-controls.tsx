@@ -1,7 +1,7 @@
-import { ModelOptions } from './ModelOptions';
-import { Selector } from '../../shared/Selector';
+import { ModelOptions } from './model-options';
+import { Selector } from '../../shared/selector';
 import { Slider } from '@astryxdesign/core/Slider';
-import attributes from '../../shared/lib/omni_attributes.json';
+import attributes from '../../shared/lib/omni-attributes.json';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';

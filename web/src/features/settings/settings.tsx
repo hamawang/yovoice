@@ -3,14 +3,14 @@ import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { TabList, Tab } from '@astryxdesign/core/TabList';
 import { Dialog } from '@astryxdesign/core/Dialog';
-import { Selector } from '../../shared/Selector';
+import { Selector } from '../../shared/selector';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Switch } from '@astryxdesign/core/Switch';
 import { useTranslator } from '@astryxdesign/core/i18n';
 import { Download, FolderOpen, FolderCog, FilePlus, Check, Cpu, ArrowUpRight, ChevronRight, Pause, Trash2 } from 'lucide-react';
 import { call, isMac } from '../../shared/lib/client';
 import { formatSize, type ModelPackage, type State, type Draft, type UiLocale } from '../../shared/workbench';
-import { CallError } from '../../shared/lib/callError';
+import { CallError } from '../../shared/lib/call-error';
 
 function downloadStatusLabel(t: (key: string) => string, downloading: boolean, received: number, size: number, status: string) {
   if (downloading) return received >= size ? t('@yovoice.settings.download.verifying') : t('@yovoice.settings.download.running');

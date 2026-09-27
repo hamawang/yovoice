@@ -1,4 +1,4 @@
-import { CallError } from './callError';
+import { CallError } from './call-error';
 
 export function encodeWav(buffer: AudioBuffer, start = 0, end = buffer.duration): Blob {
   const first = Math.max(0, Math.floor(start * buffer.sampleRate));

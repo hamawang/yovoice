@@ -6,7 +6,7 @@ import { HStack, VStack, Layout, LayoutHeader, LayoutContent, LayoutFooter } fro
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { Player } from '../media/Player';
+import { Player } from '../media/player';
 import { call } from '../../shared/lib/client';
 import { formatCallError } from '../../shared/i18n/format';
 import type { Generation, Voice } from '../../shared/workbench';

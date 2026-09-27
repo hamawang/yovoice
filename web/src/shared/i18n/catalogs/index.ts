@@ -1,6 +1,6 @@
 import type { Catalog, MessagesByLocale } from '@astryxdesign/core/i18n';
 import en from './en.json';
-import zhCN from './zh-CN.json';
+import zhCN from './zh-cn.json';
 
 export const appMessages = {
   en: en as Catalog,

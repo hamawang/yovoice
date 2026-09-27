@@ -6,5 +6,5 @@ import '@astryxdesign/core/reset.css';
 import '@astryxdesign/core/astryx.css';
 import '@astryxdesign/theme-neutral/theme.css';
 import './app/styles.css';
-import { App } from './app/App';
+import { App } from './app/app';
 createRoot(document.getElementById('root')!).render(<React.StrictMode><Theme theme={neutralTheme} mode="light"><App /></Theme></React.StrictMode>);

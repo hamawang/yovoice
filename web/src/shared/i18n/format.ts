@@ -1,6 +1,6 @@
 import type { TranslatorFn } from '@astryxdesign/core/i18n';
 import type { Activity, MessageCode, MessageParams } from '../workbench';
-import { CallError } from '../lib/callError';
+import { CallError } from '../lib/call-error';
 
 const unknownCode = '@yovoice.error.unknown' as MessageCode;
 

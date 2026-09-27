@@ -1,4 +1,4 @@
-import { ModelOptions } from './ModelOptions';
+import { ModelOptions } from './model-options';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';

@@ -8,7 +8,7 @@ import { formatTime } from '../../shared/workbench';
 import type { Track } from '../../shared/workbench';
 
 // 头像素材仅在展示库列表时加载，避免进入创作首屏主包。
-const SeededAvatar = lazy(() => import('../../shared/ui/SeededAvatar').then(module => ({ default: module.SeededAvatar })));
+const SeededAvatar = lazy(() => import('../../shared/ui/seeded-avatar').then(module => ({ default: module.SeededAvatar })));
 
 export function Player({ track, onError, suspended, compact = false, historyControl, actions, avatar }: { avatar?: { seed: string; label: string; disabled?: boolean; select: () => void }; actions?: ReactNode; historyControl?: ReactNode; compact?: boolean; suspended: boolean; track: Track | null; onError: (message: string) => void }) {
   const t = useTranslator();
