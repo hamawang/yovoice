@@ -43,7 +43,8 @@ func NewStore(root string) (*Store, error) {
 		s.state.Activity.Params = nil
 		s.state.Activity.ErrorCode = nil
 		s.state.Activity.ErrorParams = nil
-	} else if s.state.Activity != nil && s.state.Activity.Code == "" {
+	} else if s.state.Activity != nil && (s.state.Activity.Code == "" || s.state.Activity.Status == "failed") {
+		// 失败提示属于上次会话，重启后不再冒充本次操作的错误。
 		s.state.Activity = nil
 	}
 	// Legacy state.json without uiLocale defaults to zh-CN. Brand-new installs stay empty so the web can persist navigator.language.
