@@ -192,6 +192,17 @@ public partial class MainWindow : Window
                     string sidebarPath = Path.Combine(service.Root, "sidebar.json");
                     File.WriteAllText(sidebarPath + ".tmp", JsonSerializer.Serialize(new { size, isCollapsed = collapsed }));
                     File.Move(sidebarPath + ".tmp", sidebarPath, true); result = true; break;
+                case "audio.export":
+                    string encoded = data.GetProperty("base64").GetString() ?? "";
+                    if (encoded.Length > 240_000_000) throw new ArgumentException("导出音频超过大小限制。");
+                    byte[] wav = Convert.FromBase64String(encoded);
+                    if (wav.Length < 44 || System.Text.Encoding.ASCII.GetString(wav, 0, 4) != "RIFF" || System.Text.Encoding.ASCII.GetString(wav, 8, 4) != "WAVE") throw new ArgumentException("导出音频格式无效。");
+                    var save = new SaveFileDialog { Filter = "WAV 音频|*.wav", DefaultExt = ".wav", FileName = Path.GetFileName(data.GetProperty("name").GetString() ?? "yovoice.wav"), OverwritePrompt = true };
+                    if (save.ShowDialog(this) != true) { result = false; break; }
+                    string temporary = save.FileName + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                    try { await File.WriteAllBytesAsync(temporary, wav); File.Move(temporary, save.FileName, true); }
+                    finally { if (File.Exists(temporary)) File.Delete(temporary); }
+                    result = true; break;
                 case "media.reveal":
                     var location = await service.CallAsync("media.path", data);
                     string path = location.GetString()!;

@@ -229,8 +229,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     func webView(_ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping ([URL]?) -> Void) {
         guard frame.isMainFrame, Self.trusted(frame.securityOrigin, localOrigin: origin) else { completionHandler(nil); return }
         let panel = NSOpenPanel()
-        panel.title = HostL10n.t("panel.pickAudio")
-        panel.allowedContentTypes = [.audio]
+        panel.title = HostL10n.t("panel.pickAudioOrSubtitles")
+        panel.allowedContentTypes = [.audio] + ["srt", "vtt", "ass", "ssa"].compactMap { UTType(filenameExtension: $0) }
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         panel.beginSheetModal(for: window) { response in completionHandler(response == .OK ? panel.urls : nil) }
@@ -266,6 +266,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             guard let size = data["size"] as? Double, size.isFinite, (180...360).contains(size), let collapsed = data["isCollapsed"] as? Bool else { throw failure(HostL10n.t("err.sidebarInvalid")) }
             let saved = try JSONSerialization.data(withJSONObject: ["size": size, "isCollapsed": collapsed])
             UserDefaults.standard.set(String(data: saved, encoding: .utf8), forKey: "sidebar-layout")
+            return ["id": message["id"]!, "result": true]
+        }
+        if method == "audio.export" {
+            guard let encoded = data["base64"] as? String, encoded.utf8.count <= 240_000_000,
+                  let audio = Data(base64Encoded: encoded), audio.count >= 44,
+                  String(data: audio.prefix(4), encoding: .ascii) == "RIFF",
+                  String(data: audio.subdata(in: 8..<12), encoding: .ascii) == "WAVE" else { throw failure(HostL10n.t("err.exportInvalid")) }
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [UTType(filenameExtension: "wav") ?? .audio]
+            panel.nameFieldStringValue = (data["name"] as? String ?? "yovoice.wav")
+            let response = await withCheckedContinuation { continuation in panel.beginSheetModal(for: window) { continuation.resume(returning: $0) } }
+            guard response == .OK, let url = panel.url else { return ["id": message["id"]!, "result": false] }
+            try audio.write(to: url, options: .atomic)
             return ["id": message["id"]!, "result": true]
         }
         if method == "media.reveal" {
