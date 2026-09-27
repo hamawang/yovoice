@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 )
 
 // audioConverter 只使用安装包中的转换器，不在运行时下载或依赖系统 PATH。
@@ -42,6 +43,10 @@ func packagedTool(name string) (string, error) {
 }
 
 func convertAudio(ctx context.Context, executable, input, output string) error {
+	return convertAudioWithLimit(ctx, executable, input, output, 60)
+}
+
+func convertAudioWithLimit(ctx context.Context, executable, input, output string, seconds int) error {
 	input, err := filepath.Abs(input)
 	if err != nil {
 		return err
@@ -49,7 +54,7 @@ func convertAudio(ctx context.Context, executable, input, output string) error {
 	// 禁用网络和播放列表，只读取本地常见音频容器；多解码一秒用于拒绝超长输入。
 	cmd := exec.CommandContext(ctx, executable, "-nostdin", "-v", "error", "-xerror",
 		"-protocol_whitelist", "file", "-format_whitelist", "wav,mp3,mov,aac,flac,ogg,aiff,asf,matroska,webm",
-		"-i", input, "-map", "0:a:0", "-vn", "-t", "61", "-ac", "1", "-ar", "24000",
+		"-i", input, "-map", "0:a:0", "-vn", "-t", strconv.Itoa(seconds+1), "-ac", "1", "-ar", "24000",
 		"-c:a", "pcm_s16le", "-map_metadata", "-1", "-y", output)
 	configureProcess(cmd)
 	if err = cmd.Run(); err != nil {

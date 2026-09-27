@@ -34,6 +34,18 @@ func TestAudioConversion(t *testing.T) {
 			}
 		})
 	}
+	longInput := filepath.Join(root, "long.mp3")
+	cmd := exec.Command(executable, "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=65", longInput)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("%s: %v", output, err)
+	}
+	longOutput := filepath.Join(root, "long.wav")
+	must(t, convertAudioWithLimit(context.Background(), decoder, longInput, longOutput, 3600))
+	duration, err := Duration(longOutput)
+	must(t, err)
+	if duration < 64.9 || duration > 65.2 {
+		t.Fatal("时间线素材转换不应截断在 61 秒", duration)
+	}
 	invalid := filepath.Join(root, "invalid.mp3")
 	must(t, os.WriteFile(invalid, []byte("not audio"), 0600))
 	if convertAudio(context.Background(), decoder, invalid, filepath.Join(root, "invalid.wav")) == nil {
