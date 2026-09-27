@@ -67,9 +67,19 @@ Check for updates from the app menu on macOS or Windows. Updates are also checke
 ## Quick Start
 
 1. **Set up a model.** Open Settings and download your chosen model. The CPU engine is bundled on Windows; CUDA can be downloaded from Settings for NVIDIA GPU acceleration.
-2. **Add a voice.** Import or record a 1–60 second reference clip, or use VoxCPM2 / OmniVoice / Qwen3-TTS VoiceDesign without one.
-3. **Create speech.** Enter your text, choose an expression mode, and select Generate.
-4. **Listen and export.** Preview the result and find previous generations in History.
+2. **Prepare a character.** Create a character in the sound library, or import or record a 1–60 second clip under Reference audio. Preview recordings before saving.
+3. **Create a project.** Choose Story dubbing or Speech generation from New project, or create directly from either project list. Stories support multiple speakers and subtitle imports; speech projects generate a single passage.
+4. **Listen and manage.** Edit story audio as individual timeline clips. Open History versions from a speech project's card menu to manage that project's results. Selecting an older version only changes playback, leaving the text and settings intact.
+
+Both project lists support search, opening the entire card, renaming, duplication and deletion. The sound library groups reusable characters and reference audio. Character edits are explicitly saved; applying a character requires a target project and speaker, and later library edits do not alter existing projects. The task status entry shows the current generation or download. See the [product and interaction specification](docs/product-ux.md) for implemented scope and future requirements.
+
+Stories support SRT, VTT and ASS/SSA imports. Selecting a file creates a new story directly; cancelling creates nothing. WebVTT voice tags and ASS/SSA Name/Actor fields identify speakers; unmarked dialogue shares one speaker. Add or name speakers, reassign individual cues and map speakers to library characters. Settings are captured when selected; select the character again to refresh them. Select a line to edit its speaker's settings in the inspector; changes apply to every line by that speaker. Click below the last line to append a cue using the previous speaker. Enter splits a cue, Shift+Enter inserts a line break, and Backspace or Delete removes an empty cue. Empty cues are saved but skipped during generation.
+
+Imports accept UTF-8 and BOM-marked UTF-16, up to 2 MB, 2000 cues, 100 speakers and 12000 characters. Each cue is generated using its speaker's settings, saved as a separate audio file and placed on the timeline in dialogue order. Original subtitle timing is not matched. Completed clips survive cancellation or a later cue failing.
+
+Use **Add track** to add a lane and its **Audio** menu to upload audio. Speech projects can also import one of their own previous versions. Select a clip and position the playhead to split it; drag clips or edit their start times to move them. Mute individual tracks during mixed playback and drag the top edge to resize the timeline. Edits are saved with the project and preserve source audio. Each clip has editable source in/out points. Regenerating a clip uses its current dialogue and speaker settings, resets its trim and shifts later clips on the same track by the duration difference. Removing a clip preserves its dialogue and source file. Generating the whole project again creates another track, initially muted when playable tracks already exist.
+
+**Export timeline** merges the unmuted clips with their current trims, positions, gaps and overlaps into 24 kHz mono WAV. Offline export currently supports up to one hour. macOS and Windows use a native save dialog; browser preview downloads the file. Export leaves the editable project intact.
 
 Projects, voices, and settings are saved in `~/.yovoice`.
 

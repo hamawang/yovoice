@@ -125,3 +125,11 @@ scripts/desktop/      Packaging and native verification
 ```
 
 Frontend dependencies flow from `app` to `features` to `shared`. Native hosts call the Go service over authenticated loopback HTTP.
+
+前端公共 UI 的归属如下，新增页面优先复用这些组合：
+
+- `shared/ui/app-dialog.tsx` 统一弹窗标题、间距、错误与操作区；删除使用 `ConfirmDelete`，请求和错误状态由业务调用方持有。
+- `features/library/library-layout.tsx` 统一资源库标题、搜索、滚动区、空状态与条目；声音和历史页面归 `media-library.tsx`。
+- `features/create/studio.tsx` 统一创作与角色编辑的正文、标题及侧栏布局；`shared-controls.tsx` 负责参考声音、高级设置和随机种子。
+- `features/media/playback-toolbar.tsx` 统一播放工具栏与缩放；单音频播放和多轨调度各自保留在原组件。
+- `app/styles.css` 的基础控件区集中管理公共外观，尺寸通过 `size` 与 `--size-element-*` 令牌选择；业务区域不追加基础控件尺寸覆盖。下拉框统一由 `shared/selector.tsx` 设置向下展开（视口不足时由组件翻转避让），业务页面不覆盖方向；缺少 Popover 或 CSS 锚点定位能力的 macOS、Windows 使用原生选择框，菜单位置由系统决定。
