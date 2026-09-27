@@ -4,8 +4,14 @@ package workbench
 type MessageCode string
 
 const (
-	MsgErrVoiceInUse       MessageCode = "@yovoice.error.voiceInUse"
-	MsgErrCharacterInvalid MessageCode = "@yovoice.error.characterInvalid"
+	MsgErrTimelineImportDuration MessageCode = "@yovoice.timeline.importDuration"
+	MsgErrTimelineInvalid        MessageCode = "@yovoice.timeline.invalid"
+	MsgErrTimelineInUse          MessageCode = "@yovoice.timeline.inUse"
+	MsgErrSubtitleInvalid        MessageCode = "@yovoice.subtitle.invalid"
+	MsgActivitySubtitle          MessageCode = "@yovoice.subtitle.progress"
+	MsgErrVoiceReferenced        MessageCode = "@yovoice.error.voiceReferenced"
+	MsgErrVoiceInUse             MessageCode = "@yovoice.error.voiceInUse"
+	MsgErrCharacterInvalid       MessageCode = "@yovoice.error.characterInvalid"
 
 	MsgErrModelImportRequired      MessageCode = "@yovoice.error.modelImportRequired"
 	MsgErrOmniReferenceRequired    MessageCode = "@yovoice.error.omniReferenceRequired"
@@ -133,8 +139,8 @@ func encodeCallError(err error) map[string]any {
 
 // AllMessageCodes lists every MessageCode constant for catalog coverage checks.
 func AllMessageCodes() []MessageCode {
-	return []MessageCode{
-		MsgErrVoiceInUse, MsgErrCharacterInvalid,
+	return []MessageCode{MsgErrTimelineImportDuration, MsgErrTimelineInvalid, MsgErrTimelineInUse, MsgErrSubtitleInvalid, MsgActivitySubtitle,
+		MsgErrVoiceInUse, MsgErrVoiceReferenced, MsgErrCharacterInvalid,
 		MsgErrModelImportRequired,
 		MsgErrOmniReferenceRequired,
 		MsgErrVoiceDescriptionRequired, MsgErrOmniAttributes, MsgErrSpeakerInvalid,

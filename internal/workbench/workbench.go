@@ -67,12 +67,38 @@ func (w *Workbench) UseBundledCPU(path string) error {
 	}, true)
 }
 func (w *Workbench) SaveDraft(d Draft) error {
+	d.ensureCueIDs()
+	if d.Kind != "" && d.Kind != "text" && d.Kind != "story" && d.Kind != "subtitle" {
+		return Err(MsgErrDraftLimits, nil)
+	}
+	if err := w.validateTimelineAssets(d.Timeline); err != nil {
+		return err
+	}
+	if err := validateTimeline(d.Timeline, w.Store.Read().History); err != nil {
+		return err
+	}
+	if _, err := d.subtitleDrafts(); err != nil {
+		return err
+	}
 	if !validID(d.ID) || textLen(d.Text) > 12000 || textLen(d.Title) > 120 || textLen(d.EmotionText) > 500 || textLen(d.VoiceDescription) > 500 || textLen(d.ReferenceText) > 2000 {
 		return Err(MsgErrDraftLimits, nil)
 	}
 	return w.Store.Update(func(s *State) {
 		i := slices.IndexFunc(s.Drafts, func(v Draft) bool { return v.ID == d.ID })
+		// 打开作品会触发保存，只有内容变化才更新排序时间。
+		if i >= 0 {
+			d.CreatedAt = s.Drafts[i].CreatedAt
+			d.UpdatedAt = s.Drafts[i].UpdatedAt
+			before, _ := json.Marshal(s.Drafts[i])
+			after, _ := json.Marshal(d)
+			if string(before) == string(after) {
+				return
+			}
+		}
+		now := time.Now()
+		d.UpdatedAt = &now
 		if i < 0 {
+			d.CreatedAt = &now
 			s.Drafts = append([]Draft{d}, s.Drafts...)
 		} else {
 			s.Drafts[i] = d
@@ -152,14 +178,25 @@ func (w *Workbench) deleteMedia(kind, id string) error {
 		return Err(MsgErrAudioMissing, nil)
 	}
 	if kind == "voices" {
-		for _, c := range s.Characters {
-			if value(c.Settings.VoiceID) == id || value(c.Settings.EmotionVoiceID) == id {
-				return Err(MsgErrVoiceInUse, nil)
-			}
+		users := s.voiceUsers(id)
+		if len(users) > 0 {
+			return Err(MsgErrVoiceReferenced, MessageParams{"names": strings.Join(users, "、")})
 		}
 	}
 	if kind == "voices" && s.Activity != nil && s.Activity.Kind == "generate" && s.Activity.Status == "running" {
 		return Err(MsgErrVoiceBusyDelete, nil)
+	}
+	if kind == "outputs" {
+		for _, draft := range s.Drafts {
+			if draft.Timeline == nil {
+				continue
+			}
+			for _, track := range draft.Timeline.Tracks {
+				if slices.ContainsFunc(track.Clips, func(c AudioClip) bool { return c.GenerationID == id }) {
+					return Err(MsgErrTimelineInUse, nil)
+				}
+			}
+		}
 	}
 	removed := path + ".deleted"
 	_, e = os.Stat(path)
@@ -250,6 +287,13 @@ func (w *Workbench) begin(kind string, code MessageCode, params MessageParams, m
 			requestID = requestIDs[0]
 		}
 		s.Activity = &Activity{RequestID: requestID, Kind: kind, Code: code, Params: params, Status: "running", ModelID: modelID, StartedAt: time.Now().UTC()}
+		if len(requestIDs) > 1 {
+			if requestID == "" {
+				s.Activity.ProjectID = requestIDs[1]
+			} else {
+				s.Activity.CharacterID = requestIDs[1]
+			}
+		}
 	}, true); e != nil {
 		cancel()
 		return e
@@ -582,41 +626,56 @@ func (w *Workbench) importVoice(ctx context.Context, path, name, referenceText, 
 	}
 	return v, nil
 }
-func (w *Workbench) generate(d Draft) error { return w.generateAudio(d, "") }
+func (w *Workbench) generate(d Draft) error { return w.generateAudio(d, "", "", "") }
 
-func (w *Workbench) generateAudio(d Draft, previewID string) error {
-	if e := Validate(d); e != nil {
-		return e
+func (w *Workbench) generateAudio(d Draft, previewID, cueID, clipID string) error {
+	d.ensureCueIDs()
+	original := d
+	if cueID != "" {
+		if d.Subtitles == nil {
+			return Err(MsgErrSubtitleInvalid, nil)
+		}
+		i := slices.IndexFunc(d.Subtitles.Cues, func(c SubtitleCue) bool { return c.ID == cueID })
+		if i < 0 {
+			return Err(MsgErrSubtitleInvalid, nil)
+		}
+		if clipID != "" {
+			found := false
+			if d.Timeline != nil {
+				for _, lane := range d.Timeline.Tracks {
+					for _, clip := range lane.Clips {
+						if clip.ID == clipID {
+							found = true
+						}
+					}
+				}
+			}
+			if !found {
+				return Err(MsgErrTimelineInvalid, nil)
+			}
+		}
+		document := *d.Subtitles
+		document.Cues = []SubtitleCue{document.Cues[i]}
+		d.Subtitles = &document
+		d.Text = document.Cues[0].Text
 	}
 	s := w.Store.Read()
-	i := slices.IndexFunc(s.Models, func(m InstalledModel) bool { return m.ID == d.ModelID })
-	if i < 0 {
-		return Err(MsgErrModelRequired, nil)
-	}
-	voice := ""
-	var e error
-	if d.RequiresVoice() {
-		voice, e = w.MediaFile("voices", value(d.VoiceID))
-		if e != nil {
-			return Err(MsgErrVoiceRequired, nil)
-		}
-	}
-	emotion := ""
-	if d.EmotionVoiceID != nil {
-		emotion, _ = w.MediaFile("voices", *d.EmotionVoiceID)
-	}
-	if _, e = BuildRequest(d, voice, emotion); e != nil {
+	parts, e := w.prepareSynthesis(d, s)
+	if e != nil {
 		return e
 	}
 	if s.RuntimePath == nil || value(s.RuntimeBackend) != s.Preferences.Backend {
 		return Err(MsgErrRuntimeRequired, nil)
 	}
 	if previewID == "" {
-		if e = w.SaveDraft(d); e != nil {
+		if e = w.SaveDraft(original); e != nil {
 			return e
 		}
 	}
 	return w.begin("generate", MsgActivityGenerate, nil, nil, func(ctx context.Context) error {
+		if d.Subtitles != nil && previewID == "" {
+			return w.generateSegments(ctx, s, parts, clipID)
+		}
 		id := newID()
 		file := id + ".wav"
 		if previewID != "" {
@@ -633,7 +692,8 @@ func (w *Workbench) generateAudio(d Draft, previewID string) error {
 				_ = os.Remove(path)
 			}
 		}()
-		if e = w.engine.Generate(ctx, *s.RuntimePath, s.Models[i], s.Preferences.Backend, d, voice, emotion, path, func(code MessageCode, params MessageParams) { w.progress(code, params, 0, 0) }); e != nil {
+		part := parts[0]
+		if e = w.engine.Generate(ctx, *s.RuntimePath, part.model, s.Preferences.Backend, part.draft, part.voice, part.emotion, path, func(code MessageCode, params MessageParams) { w.progress(code, params, 0, 1) }); e != nil {
 			return e
 		}
 		duration, e := Duration(path)
@@ -650,14 +710,14 @@ func (w *Workbench) generateAudio(d Draft, previewID string) error {
 			keep = e == nil
 			return e
 		}
-		g := Generation{id, d.Title, file, time.Now().UTC(), duration, d}
+		g := Generation{ID: id, Title: d.Title, FileName: file, CreatedAt: time.Now().UTC(), Duration: duration, Settings: d}
 		if e = w.Store.Update(func(s *State) { s.History = append([]Generation{g}, s.History...) }, true); e != nil {
 			_ = os.Remove(path)
 			return e
 		}
 		keep = true
 		return nil
-	}, previewID)
+	}, previewID, d.ID)
 }
 func (w *Workbench) Call(method string, data json.RawMessage) (any, error) {
 	var p struct {
@@ -690,6 +750,19 @@ func (w *Workbench) Call(method string, data json.RawMessage) (any, error) {
 			return nil, Err(MsgErrDraftIDInvalid, nil)
 		}
 		err = w.Store.Update(func(s *State) { s.Drafts = slices.DeleteFunc(s.Drafts, func(d Draft) bool { return d.ID == p.ID }) }, true)
+	case "generation.cue":
+		var input struct {
+			Draft  Draft  `json:"draft"`
+			CueID  string `json:"cueId"`
+			ClipID string `json:"clipId"`
+		}
+		if err = json.Unmarshal(data, &input); err != nil {
+			return nil, err
+		}
+		if input.CueID == "" {
+			return nil, Err(MsgErrSubtitleInvalid, nil)
+		}
+		err = w.generateAudio(input.Draft, "", input.CueID, input.ClipID)
 	case "draft.save", "generation.start":
 		d := DefaultDraft()
 		if e := json.Unmarshal(data, &d); e != nil {
@@ -708,7 +781,7 @@ func (w *Workbench) Call(method string, data json.RawMessage) (any, error) {
 		err = w.preferences(preferences)
 	case "voice.import":
 		return w.ImportVoice(context.Background(), p.Path, "")
-	case "voice.record":
+	case "voice.record", "timeline.import":
 		b, e := base64.StdEncoding.DecodeString(p.Base64)
 		if e != nil {
 			return nil, e
@@ -720,6 +793,9 @@ func (w *Workbench) Call(method string, data json.RawMessage) (any, error) {
 		defer os.Remove(path)
 		if e = os.WriteFile(path, b, 0600); e != nil {
 			return nil, e
+		}
+		if method == "timeline.import" {
+			return w.importTimelineAudio(context.Background(), path, p.Name)
 		}
 		return w.ImportVoice(context.Background(), path, p.Name)
 	case "model.import":

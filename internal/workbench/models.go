@@ -58,11 +58,59 @@ type SynthesisSettings struct {
 	Seed              *int      `json:"seed"`
 }
 
+type SubtitleSpeaker struct {
+	ID          string             `json:"id"`
+	SourceName  string             `json:"sourceName"`
+	CharacterID string             `json:"characterId,omitempty"`
+	Settings    *SynthesisSettings `json:"settings,omitempty"`
+}
+type SubtitleCue struct {
+	ID        string `json:"id,omitempty"`
+	Start     int64  `json:"start"`
+	End       int64  `json:"end"`
+	Text      string `json:"text"`
+	SpeakerID string `json:"speakerId"`
+}
+type SubtitleDocument struct {
+	Speakers []SubtitleSpeaker `json:"speakers"`
+	Cues     []SubtitleCue     `json:"cues"`
+}
+type AudioClip struct {
+	ID           string  `json:"id"`
+	GenerationID string  `json:"generationId,omitempty"`
+	AssetID      string  `json:"assetId,omitempty"`
+	Start        float64 `json:"start"`
+	Offset       float64 `json:"offset"`
+	Duration     float64 `json:"duration"`
+}
+type AudioLane struct {
+	ID    string      `json:"id"`
+	Name  string      `json:"name"`
+	Muted bool        `json:"muted"`
+	Clips []AudioClip `json:"clips"`
+}
+type AudioAsset struct {
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	FileName string  `json:"fileName"`
+	Duration float64 `json:"duration"`
+}
+type AudioTimeline struct {
+	Assets              []AudioAsset `json:"assets,omitempty"`
+	Tracks              []AudioLane  `json:"tracks"`
+	AcceptedGenerations []string     `json:"acceptedGenerations,omitempty"`
+}
 type Draft struct {
 	SynthesisSettings
-	ID    string `json:"id"`
-	Title string `json:"title"`
-	Text  string `json:"text"`
+	Kind        string            `json:"kind,omitempty"`
+	CharacterID string            `json:"characterId,omitempty"`
+	CreatedAt   *time.Time        `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time        `json:"updatedAt,omitempty"`
+	ID          string            `json:"id"`
+	Title       string            `json:"title"`
+	Text        string            `json:"text"`
+	Subtitles   *SubtitleDocument `json:"subtitles,omitempty"`
+	Timeline    *AudioTimeline    `json:"timeline,omitempty"`
 }
 
 func DefaultDraft() Draft {
@@ -102,14 +150,27 @@ type InstalledModel struct {
 	Managed bool   `json:"managed"`
 }
 type Generation struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	FileName  string    `json:"fileName"`
-	CreatedAt time.Time `json:"createdAt"`
-	Duration  float64   `json:"duration"`
-	Settings  Draft     `json:"settings"`
+	ID        string             `json:"id"`
+	Title     string             `json:"title"`
+	FileName  string             `json:"fileName"`
+	CreatedAt time.Time          `json:"createdAt"`
+	Duration  float64            `json:"duration"`
+	Settings  Draft              `json:"settings"`
+	Segment   *GenerationSegment `json:"segment,omitempty"`
+}
+
+// GenerationSegment 保留单句来源；剪辑与原音频通过生成版本关联。
+type GenerationSegment struct {
+	CueID        string `json:"cueId"`
+	SpeakerID    string `json:"speakerId"`
+	SpeakerName  string `json:"speakerName"`
+	BatchID      string `json:"batchId"`
+	Index        int    `json:"index"`
+	TargetClipID string `json:"targetClipId,omitempty"`
 }
 type Activity struct {
+	ProjectID   string        `json:"projectId,omitempty"`
+	CharacterID string        `json:"characterId,omitempty"`
 	RequestID   string        `json:"requestId,omitempty"`
 	Kind        string        `json:"kind"`
 	Code        MessageCode   `json:"code"`

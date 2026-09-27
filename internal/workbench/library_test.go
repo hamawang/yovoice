@@ -25,7 +25,9 @@ func TestCharacterAndVoiceLifecycle(t *testing.T) {
 	id := newID()
 	file := filepath.Join(w.Store.Root, "outputs", id+".wav")
 	must(t, os.WriteFile(file, wav(), 0600))
-	must(t, w.Store.Update(func(s *State) { s.History = append(s.History, Generation{id, "片段", id + ".wav", time.Now(), 1, d}) }, true))
+	must(t, w.Store.Update(func(s *State) {
+		s.History = append(s.History, Generation{ID: id, Title: "片段", FileName: id + ".wav", CreatedAt: time.Now(), Duration: 1, Settings: d})
+	}, true))
 	v := call("voice.fromGeneration", map[string]any{"id": id, "name": "旁白音色", "referenceText": "校正后的原文"}).(Voice)
 	if v.SourceGenerationID != id || v.ReferenceText != "校正后的原文" {
 		t.Fatal(v)

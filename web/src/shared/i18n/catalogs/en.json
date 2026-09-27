@@ -1597,5 +1597,23 @@
   },
   "@yovoice.settings.modelDesc.kokoroOfficial": {
     "defaultMessage": "Official Q8 download · 8 languages and 49 preset voices; Japanese dictionary not included."
+  },
+  "@yovoice.timeline.importDuration": {
+    "defaultMessage": "Audio must be between 0.01 seconds and 1 hour."
+  },
+  "@yovoice.timeline.invalid": {
+    "defaultMessage": "Invalid timeline. Check clip ranges. Maximum 32 tracks, 2000 clips and 24 hours."
+  },
+  "@yovoice.timeline.inUse": {
+    "defaultMessage": "This audio is used in a project timeline. Remove its clips first."
+  },
+  "@yovoice.subtitle.invalid": {
+    "defaultMessage": "Invalid subtitles. Use SRT, VTT or ASS/SSA, up to 2 MB, 2000 cues, 100 speakers and 12000 characters. Check timestamps and speaker assignments."
+  },
+  "@yovoice.subtitle.progress": {
+    "defaultMessage": "Generating subtitle {n} / {total}"
+  },
+  "@yovoice.error.voiceReferenced": {
+    "defaultMessage": "Reference audio is used by “{names}”. Replace or remove its references first."
   }
 }

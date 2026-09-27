@@ -1597,5 +1597,23 @@
   },
   "@yovoice.settings.modelDesc.kokoroOfficial": {
     "defaultMessage": "官方 Q8 下载包 · 中英等 8 种语言 · 49 个预设音色，不含日语词典。"
+  },
+  "@yovoice.timeline.importDuration": {
+    "defaultMessage": "音频时长需在 0.01 秒至 1 小时之间。"
+  },
+  "@yovoice.timeline.invalid": {
+    "defaultMessage": "音轨设置无效，请检查片段范围；最多 32 条音轨、2000 个片段及 24 小时。"
+  },
+  "@yovoice.timeline.inUse": {
+    "defaultMessage": "这段音频正在作品音轨中使用，请先移除对应片段。"
+  },
+  "@yovoice.subtitle.invalid": {
+    "defaultMessage": "字幕格式或内容无效。支持 SRT、VTT、ASS/SSA，最多 2 MB、2000 句、100 位说话人和 12000 字；请检查时间和说话人设置。"
+  },
+  "@yovoice.subtitle.progress": {
+    "defaultMessage": "正在生成字幕 {n} / {total}"
+  },
+  "@yovoice.error.voiceReferenced": {
+    "defaultMessage": "参考音频正在被「{names}」使用，请先替换或移除引用。"
   }
 }

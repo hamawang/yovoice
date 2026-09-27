@@ -20,7 +20,7 @@ func (w *Workbench) libraryCall(method string, data json.RawMessage) (any, error
 			return nil, Err(MsgErrCharacterInvalid, nil)
 		}
 		id := newID()
-		return id, w.generateAudio(Draft{ID: c.ID, Title: c.Name, Text: c.DemoText, SynthesisSettings: c.Settings}, id)
+		return id, w.generateAudio(Draft{ID: c.ID, Title: c.Name, Text: c.DemoText, SynthesisSettings: c.Settings}, id, "", "")
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()

@@ -130,6 +130,12 @@ func TestMediaPersistenceAndRollback(t *testing.T) {
 	}
 	path, e := w.MediaFile("voices", v.ID)
 	must(t, e)
+	if err := w.deleteMedia("voices", v.ID); err == nil {
+		t.Fatal("不应删除被作品引用的音频")
+	}
+	d.VoiceID = nil
+	d.EmotionVoiceID = nil
+	must(t, w.SaveDraft(d))
 	// 强制状态提交失败，文件和内存状态必须一起恢复。
 	must(t, os.Remove(filepath.Join(root, "state.json")))
 	must(t, os.Mkdir(filepath.Join(root, "state.json"), 0700))
@@ -155,7 +161,9 @@ func TestMediaPersistenceAndRollback(t *testing.T) {
 	id := newID()
 	output, _ := w.Store.MediaPath("outputs", id+".wav")
 	must(t, os.WriteFile(output, wav(), 0600))
-	must(t, w.Store.Update(func(s *State) { s.History = append(s.History, Generation{id, "历史", id + ".wav", time.Now(), 1, d}) }, true))
+	must(t, w.Store.Update(func(s *State) {
+		s.History = append(s.History, Generation{ID: id, Title: "历史", FileName: id + ".wav", CreatedAt: time.Now(), Duration: 1, Settings: d})
+	}, true))
 	invoke(t, w, "media.rename", map[string]string{"kind": "outputs", "id": id, "name": "重命名历史"})
 	must(t, w.deleteMedia("outputs", id))
 	if len(w.Store.Read().History) != 0 {
@@ -394,6 +402,10 @@ func TestMain(m *testing.M) {
 			_ = json.NewDecoder(r.Body).Decode(&p)
 			if p.Request.Text == "等待取消" {
 				<-r.Context().Done()
+				return
+			}
+			if strings.HasSuffix(p.Request.Text, "模拟生成失败") {
+				http.Error(w, "模拟生成失败", http.StatusInternalServerError)
 				return
 			}
 			_ = json.NewEncoder(w).Encode(map[string]string{"audio": base64.StdEncoding.EncodeToString(wav())})
