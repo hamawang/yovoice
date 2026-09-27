@@ -1,8 +1,11 @@
+import { PlaybackToolbar, TrackZoom } from './playback-toolbar';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
+import { ResizeHandle } from '@astryxdesign/core/Resizable';
+import { useAudioPanel } from './use-audio-panel';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { Play, Pause, FolderOpen, SkipBack, SkipForward, Volume2, VolumeX, ZoomIn, ZoomOut } from 'lucide-react';
+import { Play, Pause, Square, FolderOpen, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { call, mediaUrl, CallError } from '../../shared/lib/client';
 import { formatTime } from '../../shared/workbench';
 import type { Track } from '../../shared/workbench';
@@ -10,8 +13,9 @@ import type { Track } from '../../shared/workbench';
 // 头像素材仅在展示库列表时加载，避免进入创作首屏主包。
 const SeededAvatar = lazy(() => import('../../shared/ui/seeded-avatar').then(module => ({ default: module.SeededAvatar })));
 
-export function Player({ track, onError, suspended, compact = false, historyControl, actions, avatar }: { avatar?: { seed: string; label: string; disabled?: boolean; select: () => void }; actions?: ReactNode; historyControl?: ReactNode; compact?: boolean; suspended: boolean; track: Track | null; onError: (message: string) => void }) {
+export function Player({ track, onError, suspended, compact = false, historyControl, actions, laneActions, avatar }: { avatar?: { seed: string; label: string; disabled?: boolean; select: () => void }; actions?: ReactNode; laneActions?: ReactNode; historyControl?: ReactNode; compact?: boolean; suspended: boolean; track: Track | null; onError: (message: string) => void }) {
   const t = useTranslator();
+  const panel = useAudioPanel(!!track || !!historyControl, compact || avatar ? undefined : 'audio-player-compact-height');
   const audio = useRef<HTMLAudioElement>(null);
   const autoplay = useRef(false);
   const lane = useRef<HTMLElement>(null);
@@ -65,7 +69,10 @@ export function Player({ track, onError, suspended, compact = false, historyCont
   }, [peaks, zoom]);
   const toggle = async () => {
     if (!audio.current) return;
-    if (playing) audio.current.pause(); else try {
+    if (playing) {
+      audio.current.pause();
+      if (avatar) { audio.current.currentTime = 0; setTime(0); }
+    } else try {
       if (avatar) { audio.current.currentTime = 0; setTime(0); }
       await audio.current.play();
     } catch { onError('@yovoice.error.audioPlayFailed'); }
@@ -86,8 +93,8 @@ export function Player({ track, onError, suspended, compact = false, historyCont
     onError={() => { if (url) onError('@yovoice.error.audioPlayFailed'); }} />;
   if (avatar) return <HStack className="avatar-player" data-playing={playing} gap={0}>
     {media}
-    <Button className="avatar-toggle" label={playing ? t('@yovoice.player.pause') : avatar.label} isIconOnly variant="ghost" isDisabled={avatar.disabled || suspended}
-      icon={<HStack className="avatar-art" gap={0}><Suspense fallback={null}><SeededAvatar seed={avatar.seed} /></Suspense>{playing ? <Pause className="avatar-symbol" size={20} fill="currentColor" /> : <Play className="avatar-symbol" size={20} fill="currentColor" />}</HStack>}
+    <Button className="avatar-toggle" label={playing ? t('@yovoice.player.stop') : avatar.label} isIconOnly variant="ghost" isDisabled={avatar.disabled || suspended}
+      icon={<HStack className="avatar-art" gap={0}><Suspense fallback={null}><SeededAvatar seed={avatar.seed} /></Suspense>{playing ? <Square className="avatar-symbol" size={20} fill="currentColor" /> : <Play className="avatar-symbol" size={20} fill="currentColor" />}</HStack>}
       onClick={() => { if (track && url) void toggle(); else avatar.select(); }} />
   </HStack>;
   if (compact) return <HStack className="library-preview" role="group" aria-label={t('@yovoice.player.audition', { name: track?.name ?? '' })} gap={3} vAlign="center">
@@ -98,31 +105,26 @@ export function Player({ track, onError, suspended, compact = false, historyCont
     <small className="preview-time">{formatTime(duration)}</small>
     <Button label={volume === 0 ? t('@yovoice.player.unmute') : t('@yovoice.player.mute')} isIconOnly icon={volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />} size="sm" variant="ghost" onClick={() => { const next = volume === 0 ? 1 : 0; setVolume(next); if (audio.current) audio.current.volume = next; }} />
   </HStack>;
-  return <VStack as="footer" className="player" gap={0}>
+  return <VStack as="footer" className="player audio-panel" gap={0} style={{ height: panel.size }}>
+    <ResizeHandle label={t('@yovoice.timeline.resize')} direction="vertical" isReversed resizable={panel.props} />
     {media}
-    <HStack className="transport" vAlign="center" gap={4}>
-      <small className="transport-time">{formatTime(time)} <em>/ {formatTime(duration)}</em></small>
-      <HStack className="transport-controls" gap={2} vAlign="center">
-        <Button label={t('@yovoice.player.skipStart')} isIconOnly icon={<SkipBack size={16} />} size="sm" variant="ghost" isDisabled={!url} onClick={() => seek(0)} />
-        <Button label={playing ? t('@yovoice.player.pause') : t('@yovoice.player.play')} isIconOnly icon={playing ? <Pause size={16} /> : <Play size={16} fill="currentColor" />} size="sm" variant={track ? 'primary' : 'secondary'} className="play-main" isDisabled={!url} onClick={() => void toggle()} />
-        <Button label={t('@yovoice.player.skipEnd')} isIconOnly icon={<SkipForward size={16} />} size="sm" variant="ghost" isDisabled={!duration} onClick={() => seek(duration)} />
-      </HStack>
-      <HStack className="transport-end" gap={3} vAlign="center">
+    <PlaybackToolbar time={time} duration={duration} playing={playing} disabled={!url || suspended} toggle={() => void toggle()}
+      beforePlay={<Button label={t('@yovoice.player.skipStart')} isIconOnly icon={<SkipBack size={16} />} size="sm" variant="ghost" isDisabled={!url} onClick={() => seek(0)} />}
+      afterPlay={<Button label={t('@yovoice.player.skipEnd')} isIconOnly icon={<SkipForward size={16} />} size="sm" variant="ghost" isDisabled={!duration} onClick={() => seek(duration)} />}>
         <HStack className="volume-control" gap={2} vAlign="center">
           <Button label={volume === 0 ? t('@yovoice.player.unmute') : t('@yovoice.player.mute')} isIconOnly icon={volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />} size="sm" variant="ghost" onClick={() => { const next = volume === 0 ? 1 : 0; setVolume(next); if (audio.current) audio.current.volume = next; }} />
           <input aria-label={t('@yovoice.player.volume')} type="range" min={0} max={1} step={0.01} value={volume} onChange={e => { const next = Number(e.target.value); setVolume(next); if (audio.current) audio.current.volume = next; }} />
         </HStack>
-        <HStack className="track-zoom" gap={0} vAlign="center" role="group" aria-label={t('@yovoice.player.zoomGroup')}>
-          <Button label={t('@yovoice.player.zoomOut')} isIconOnly icon={<ZoomOut size={16} />} size="sm" variant="ghost" isDisabled={!duration || zoom === 1} onClick={() => setZoom(value => Math.max(1, value / 2))} />
-          <Button label={`${zoom * 100}%`} aria-label={t('@yovoice.player.zoomFit')} size="sm" variant="ghost" isDisabled={!duration} onClick={() => setZoom(1)} />
-          <Button label={t('@yovoice.player.zoomIn')} isIconOnly icon={<ZoomIn size={16} />} size="sm" variant="ghost" isDisabled={!duration || zoom === 8} onClick={() => setZoom(value => Math.min(8, value * 2))} />
-        </HStack>
-        {track?.kind === 'outputs' ? <Button label={t('@yovoice.player.reveal')} isIconOnly icon={<FolderOpen size={17} />} size="sm" variant="ghost" onClick={() => { void call('media.reveal', { kind: track.kind, id: track.id }).catch(e => onError(e.message)); }} /> : null}
+        <TrackZoom value={zoom} change={setZoom} disabled={!duration} />
         {actions}
-      </HStack>
-    </HStack>
+        {track?.kind === 'outputs' ? <Button label={t('@yovoice.player.reveal')} isIconOnly icon={<FolderOpen size={17} />} size="sm" variant="ghost" onClick={() => { void call('media.reveal', { kind: track.kind, id: track.id }).catch(e => onError(e.message)); }} /> : null}
+
+    </PlaybackToolbar>
     <HStack className="timeline" gap={0}>
-      <VStack className="track-name" gap={1} hAlign="start" vAlign="center"><strong>{track?.name ?? t('@yovoice.player.noAudio')}</strong>{historyControl ?? <small>{track?.subtitle ?? t('@yovoice.player.emptyHint')}</small>}</VStack>
+      {historyControl || laneActions ? <VStack className="player-history" gap={0}>
+        {historyControl ? <HStack className="player-version-row" gap={0} vAlign="center" paddingInline={2}>{historyControl}</HStack> : null}
+        {laneActions ? <HStack className="player-lane-actions" gap={0} paddingInline={2}>{laneActions}</HStack> : null}
+      </VStack> : null}
       <VStack className="timeline-lane" ref={lane} gap={0}>
         <VStack className="timeline-content" gap={0} style={{ width: `${zoom * 100}%` }}>
         <HStack className="time-ruler" aria-hidden="true">{ticks.map(tick => <small key={tick} style={{ left: `${tick / scale * 100}%` }}>{Number(tick.toFixed(2))}s</small>)}</HStack>
@@ -130,7 +132,7 @@ export function Player({ track, onError, suspended, compact = false, historyCont
           <svg viewBox={`0 0 ${visiblePeaks.length * 2.5} 40`} preserveAspectRatio="none" aria-hidden="true">{visiblePeaks.map((p, i) => <line key={i} x1={i * 2.5 + 1.25} x2={i * 2.5 + 1.25} y1={20 - Math.max(1, p * 19)} y2={20 + Math.max(1, p * 19)} className={i / visiblePeaks.length < time / duration ? 'played' : ''} />)}</svg>
           <i className="playhead" style={{ left: `${duration ? time / duration * 100 : 0}%` }} aria-hidden="true" />
           <input aria-label={t('@yovoice.player.progress')} aria-valuetext={t('@yovoice.player.progressValue', { current: formatTime(time), total: formatTime(duration) })} type="range" min={0} max={duration || 1} step={0.01} value={time} onChange={e => seek(Number(e.target.value))} />
-        </VStack> : <HStack className="timeline-empty" aria-hidden="true" />}
+        </VStack> : null}
         </VStack>
       </VStack>
     </HStack>

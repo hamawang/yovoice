@@ -1,3 +1,4 @@
+import { AdvancedSettings, SeedInput, ReferenceVoice } from './shared-controls';
 import { KokoroControls } from './kokoro-controls';
 import { ModelOptions } from './model-options';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -9,7 +10,7 @@ import { Slider } from '@astryxdesign/core/Slider';
 import { Selector, SelectorOption } from '../../shared/selector';
 import { Switch } from '@astryxdesign/core/Switch';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { AudioLines, ChevronUp, ChevronRight, Play, LoaderCircle } from 'lucide-react';
+import { ChevronUp, ChevronRight, LoaderCircle } from 'lucide-react';
 import { ReferenceControls } from './reference-controls';
 import { VoxControls } from './vox-controls';
 import { isReferenceModel, isVoxModel, formatTime, type Draft, type Mode, type State, type ModelPackage } from '../../shared/workbench';
@@ -53,7 +54,7 @@ export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEm
   const voice = state.voices.find(v => v.id === draft.voiceId); const emotion = state.voices.find(v => v.id === draft.emotionVoiceId);
   const selectedPreset = emotionPresets.find(preset => preset.values.every((value, i) => Math.abs(value - draft.emotions[i]) < 0.001));
   const busy = state.activity?.status === 'running';
-  const generating = busy && state.activity?.kind === 'generate';
+  const generating = busy && state.activity?.kind === 'generate' && (!state.activity.projectId || state.activity.projectId === draft.id) && !state.activity.characterId;
   const [tuneEmotions, setTuneEmotions] = useState(false);
   const [moreEmotions, setMoreEmotions] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -70,7 +71,7 @@ export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEm
     : (['zh', 'en'] as const)).map(value => ({ value, label: t(`@yovoice.language.${value}`) }));
   return <VStack as="aside" className={embedded ? undefined : "inspector"} gap={0}>
     {!embedded ? <VStack className="generation-action" gap={3}>
-      {generationAction ?? (busy && state.activity?.kind === 'generate' ? <Button label={t('@yovoice.create.cancelGenerate')} onClick={cancel} width="100%" /> : <Button label={t('@yovoice.create.generate')} variant="primary" width="100%" size="lg" aria-keyshortcuts="Control+Enter" isDisabled={busy || !draft.text.trim()} onClick={generate} />)}
+      {generationAction ?? (generating ? <Button label={t('@yovoice.create.cancelGenerate')} onClick={cancel} width="100%" /> : <Button label={t('@yovoice.create.generate')} variant="primary" width="100%" size="lg" aria-keyshortcuts="Control+Enter" isDisabled={busy || !(draft.subtitles ? draft.subtitles.cues.some(cue => cue.text.trim()) : draft.text.trim())} onClick={generate} />)}
       {generating && !generationAction ? <HStack className="generation-status" gap={2} vAlign="center">
         <LoaderCircle size={14} className="generation-spinner" aria-hidden="true" />
         <small className="grow" role="status">{state.activity ? formatActivity(t, state.activity) : ''}</small>
@@ -82,25 +83,18 @@ export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEm
     {libraryActions}
     <VStack className="inspector-actions" gap={3}>
       <h2 className="inspector-section-title">{t('@yovoice.create.model')}</h2>
-      <Selector label={t('@yovoice.create.model')} isLabelHidden placement="below" renderOption={option => <SelectorOption label={option.label} description={option.description} layout="inline" />} renderValue={option => option.label} className="model-selector" width="100%" value={draft.modelId} isDisabled={busy}
+      <Selector label={t('@yovoice.create.model')} isLabelHidden renderOption={option => <SelectorOption label={option.label} description={option.description} layout="inline" />} renderValue={option => option.label} className="model-selector" width="100%" value={draft.modelId} isDisabled={busy}
         options={[...catalog.map(model => ({ value: model.id, label: `${model.name} · ${model.precision}`, description: state.models.some(installed => installed.id === model.id) ? t('@yovoice.create.modelInstalled') : t('@yovoice.create.modelMissing') })), ...(embedded || !allowModelManagement ? [] : [{ value: 'manage', label: t('@yovoice.create.manageModels') }])]}
         onChange={modelId => { if (modelId === 'manage') { settings(); return; } change({ modelId, speaker: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family && !modelId.startsWith('kokoro-') ? draft.speaker : '', synthesisLanguage: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family ? draft.synthesisLanguage : 'auto', voiceDescription: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family ? draft.voiceDescription : '', language: modelId.startsWith('index-2.5') || ['zh', 'en'].includes(draft.language) ? draft.language : 'zh' }); }} />
 
     </VStack>
     <HStack className="inspector-heading" hAlign="between" vAlign="center"><h2 className="inspector-section-title">{t('@yovoice.create.voiceSettings')}</h2>{!embedded ? <Button label={t('@yovoice.create.backToScript')} className="inspector-toggle" variant="secondary" onClick={close} /> : null}</HStack>
-      {catalog.find(model => model.id === draft.modelId)?.family === 'kokoro_tts' ? <KokoroControls draft={draft} model={catalog.find(model => model.id === draft.modelId)!} change={change} /> : isReferenceModel(draft.modelId) ? <ReferenceControls draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} /> : isVoxModel(draft.modelId) ? <VoxControls draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} advanced={advanced} setAdvanced={setAdvanced} /> : <>
-      <VStack gap={3}>
-        <h3>{t('@yovoice.create.referenceVoice')}</h3>
-        <HStack className="voice-selected" gap={3} vAlign="center">
-          <Button label={voice?.name ?? t('@yovoice.create.addReference')} icon={<AudioLines className="voice-mark" size={20} />} variant="ghost" className="voice-title grow" onClick={chooseVoice} />
-          {voice ? <Button label={t('@yovoice.create.previewVoice')} isIconOnly icon={<Play size={17} />} variant="ghost" onClick={() => play({ ...voice, kind: 'voices', subtitle: t('@yovoice.app.subtitleReference') })} /> : null}
-        </HStack>
-      </VStack>
+      {catalog.find(model => model.id === draft.modelId)?.family === 'kokoro_tts' ? <KokoroControls advanced={advanced} setAdvanced={setAdvanced} draft={draft} model={catalog.find(model => model.id === draft.modelId)!} change={change} /> : isReferenceModel(draft.modelId) ? <ReferenceControls advanced={advanced} setAdvanced={setAdvanced} draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} /> : isVoxModel(draft.modelId) ? <VoxControls draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} advanced={advanced} setAdvanced={setAdvanced} /> : <>
+      <ReferenceVoice voice={voice} choose={chooseVoice} play={play} />
       <VStack gap={3}>
         <h3>{t('@yovoice.create.expression')}</h3>
         <SegmentedControl size="sm" label={t('@yovoice.create.expression')} value={draft.mode} onChange={mode => change({ mode: mode as Mode })} layout="fill">{modes.map(id => <SegmentedControlItem key={id} value={id} label={t(`@yovoice.create.mode.${id}`)} />)}</SegmentedControl>
-        {draft.mode === 'speaker' ? <p className="muted helper">{t('@yovoice.create.mode.speakerHelp')}</p> : null}
-        {draft.mode === 'reference' ? <VStack gap={3}><Button label={emotion?.name ?? t('@yovoice.create.addEmotionReference')} icon={<AudioLines size={17} />} onClick={chooseEmotion} width="100%" /><p className="muted helper">{t('@yovoice.create.mode.referenceHelp')}</p></VStack> : null}
+        {draft.mode === 'reference' ? <ReferenceVoice voice={emotion} choose={chooseEmotion} play={play} label={t('@yovoice.create.mode.reference')} placeholder={t('@yovoice.create.addEmotionReference')} /> : null}
         {draft.mode === 'text' ? <VStack gap={3}>
           <TextArea label={t('@yovoice.create.emotionDescription')} isLabelHidden value={draft.emotionText} onChange={value => change({ emotionText: value.slice(0, 500) })} placeholder={t('@yovoice.create.emotionPlaceholder')} rows={3} isDisabled={draft.inferEmotion} />
           <Switch label={t('@yovoice.create.inferEmotion')} size="sm" value={draft.inferEmotion} onChange={value => change({ inferEmotion: value })} labelPosition="start" labelSpacing="spread" />
@@ -120,16 +114,16 @@ export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEm
         {draft.mode !== 'speaker' ? <Slider label={t('@yovoice.create.emotionStrength')} value={draft.emotionStrength} min={0} max={1} step={0.05} onChange={(value: number) => change({ emotionStrength: value })} valueDisplay="text" formatValue={v => `${Math.round(v * 100)}%`} /> : null}
       </VStack>
       <VStack gap={4}>
-        <HStack className="language-row" vAlign="center" hAlign="between"><h3 aria-hidden="true">{t('@yovoice.create.language')}</h3><Selector placement="below" label={t('@yovoice.create.language')} isLabelHidden width="calc(var(--spacing-10) * 3)" value={draft.language} options={languageOptions} onChange={language => change({ language })} /></HStack>
+        <HStack className="language-row" vAlign="center" hAlign="between"><h3 aria-hidden="true">{t('@yovoice.create.language')}</h3><Selector label={t('@yovoice.create.language')} isLabelHidden width="calc(var(--spacing-10) * 3)" value={draft.language} options={languageOptions} onChange={language => change({ language })} /></HStack>
         <Slider label={t('@yovoice.create.speed')} value={draft.speed} min={0.5} max={2} step={0.05} onChange={(speed: number) => change({ speed })} valueDisplay="text" formatValue={v => `${v.toFixed(2)}×`} />
       </VStack>
-      <details open={advanced} onToggle={e => setAdvanced(e.currentTarget.open)} className="advanced"><summary><ChevronRight size={16} aria-hidden="true" />{t('@yovoice.create.advanced')}</summary><VStack gap={4} paddingBlockStart={4}>
+      <AdvancedSettings open={advanced} onOpenChange={setAdvanced}>
         {['text', 'vector'].includes(draft.mode) ? <Switch label={t('@yovoice.create.randomEmotion')} size="sm" value={draft.randomEmotion} onChange={randomEmotion => change({ randomEmotion })} /> : null}
         <Switch label={t('@yovoice.create.doSample')} size="sm" value={draft.doSample} onChange={v => change({ doSample: v })} />
         {advancedFields.map(([key, labelKey, min, max, step]) => <label key={key} className="number-field">{labelKey.startsWith('@') ? t(labelKey) : labelKey}<input type="number" min={min} max={max} step={step} value={draft[key]} onChange={e => { if (e.target.value !== '') change({ [key]: Number(e.target.value) }); }} /></label>)}
         <ModelOptions draft={draft} family="index_tts2" change={change} />
-        <label className="number-field">{t('@yovoice.create.seed')}<input type="number" min={0} max={2147483647} value={draft.seed ?? ''} placeholder={t('@yovoice.create.seedAuto')} onChange={e => change({ seed: e.target.value ? Number(e.target.value) : null })} /></label>
-      </VStack></details>
+        <SeedInput value={draft.seed} change={change} />
+      </AdvancedSettings>
       </>}
     </VStack>
 

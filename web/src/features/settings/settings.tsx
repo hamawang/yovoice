@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { TabList, Tab } from '@astryxdesign/core/TabList';
-import { Dialog } from '@astryxdesign/core/Dialog';
+import { AppDialog } from '../../shared/ui/app-dialog';
 import { Selector } from '../../shared/selector';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Switch } from '@astryxdesign/core/Switch';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { Download, FolderOpen, FolderCog, FilePlus, Check, Cpu, ArrowUpRight, ChevronRight, Pause, Trash2 } from 'lucide-react';
+import { Download, FolderOpen, FolderCog, FilePlus, Check, Cpu, ArrowUpRight, Pause, Trash2 } from 'lucide-react';
 import { call, isMac } from '../../shared/lib/client';
 import { formatSize, type ModelPackage, type State, type Draft, type UiLocale } from '../../shared/workbench';
 import { CallError } from '../../shared/lib/call-error';
@@ -18,10 +18,16 @@ function downloadStatusLabel(t: (key: string) => string, downloading: boolean, r
   return t('@yovoice.settings.download.paused');
 }
 
-export function Settings({ state, catalog, draft, run }: { state: State; catalog: ModelPackage[]; draft: Draft; run: (task: () => Promise<unknown>) => void }) {
+export function Settings({ state, catalog, draft, run, focus }: { focus?: { tab: string; modelId: string; request: number }; state: State; catalog: ModelPackage[]; draft: Draft; run: (task: () => Promise<unknown>) => void }) {
   const t = useTranslator();
   const [license, setLicense] = useState<string | null>(null);
   const [tab, setTab] = useState('general'); const busy = state.activity?.status === 'running';
+  useEffect(() => { if (focus) setTab(focus.tab); }, [focus]);
+  useEffect(() => {
+    if (!focus || tab !== 'models') return;
+    const row = Array.from(document.querySelectorAll<HTMLElement>('[data-model-id]')).find(row => row.dataset.modelId === focus.modelId);
+    row?.scrollIntoView({ block: 'nearest' });
+  }, [focus, tab]);
   const preferences = state.preferences;
   const [proxyURL, setProxyURL] = useState(preferences.proxyURL ?? '');
   const [savingProxy, setSavingProxy] = useState(false);
@@ -42,7 +48,6 @@ export function Settings({ state, catalog, draft, run }: { state: State; catalog
         <Selector
           data-testid="ui-locale"
           size="sm"
-          placement="below"
           label={t('@yovoice.settings.uiLocale')}
           isLabelHidden
           value={preferences.uiLocale}
@@ -69,7 +74,7 @@ export function Settings({ state, catalog, draft, run }: { state: State; catalog
       <HStack className="settings-toolbar" hAlign="between" vAlign="center" gap={4} wrap="wrap">
         <HStack gap={3} vAlign="center" wrap="wrap">
           <p className="muted">{t('@yovoice.settings.downloadSource')}</p>
-          <Selector size="sm" placement="below" label={t('@yovoice.settings.downloadSource')} isLabelHidden value={preferences.downloadSource} options={[{ value: 'modelscope', label: t('@yovoice.settings.source.modelscope') }, { value: 'huggingface', label: t('@yovoice.settings.source.huggingface') }, { value: 'mirror', label: t('@yovoice.settings.source.mirror') }]} onChange={downloadSource => run(() => call('preferences.save', { ...preferences, downloadSource }))} width="calc(var(--spacing-10) * 6)" className="download-source" />
+          <Selector size="sm" label={t('@yovoice.settings.downloadSource')} isLabelHidden value={preferences.downloadSource} options={[{ value: 'modelscope', label: t('@yovoice.settings.source.modelscope') }, { value: 'huggingface', label: t('@yovoice.settings.source.huggingface') }, { value: 'mirror', label: t('@yovoice.settings.source.mirror') }]} onChange={downloadSource => run(() => call('preferences.save', { ...preferences, downloadSource }))} width="calc(var(--spacing-10) * 6)" className="download-source" />
         </HStack>
         <HStack gap={2}><Button size="sm" label={t('@yovoice.settings.importGguf')} icon={<FilePlus size={16} />} isDisabled={busy} onClick={() => run(() => call('model.import'))} /></HStack>
       </HStack>
@@ -81,7 +86,7 @@ export function Settings({ state, catalog, draft, run }: { state: State; catalog
         const downloading = download?.status === 'running';
         const removeBlocked = busy && !(activity?.kind === 'download' && activity.modelId && activity.modelId !== model.id);
         const modelDesc = model.family === 'kokoro_tts' ? t(model.id === 'kokoro-82m-q8' ? '@yovoice.settings.modelDesc.kokoroOfficial' : '@yovoice.settings.modelDesc.kokoro') : model.family === 'omnivoice' ? t('@yovoice.settings.modelDesc.omni') : model.family === 'qwen3_tts' ? t(`@yovoice.settings.modelDesc.qwen.${model.variant || 'base'}`) : model.family === 'voxcpm2' ? t('@yovoice.settings.modelDesc.vox') : model.version === '2.5' ? t('@yovoice.settings.modelDesc.25') : t('@yovoice.settings.modelDesc.basic');
-        return <VStack className="model-row" key={model.id} gap={3}><HStack className="model-summary" gap={5} vAlign="center" wrap="wrap">
+        return <VStack className="model-row" data-model-id={model.id} key={model.id} gap={3}><HStack className="model-summary" gap={5} vAlign="center" wrap="wrap">
           <VStack className="grow" gap={1}><HStack gap={3} vAlign="center" wrap="wrap"><h3>{model.name}</h3><small className="precision">{model.precision}</small><small className="model-size">{formatSize(model.size)}</small>{installed ? <small className="ready"><Check size={12} />{draft.modelId === model.id ? t('@yovoice.settings.inUse') : t('@yovoice.settings.verified')}</small> : null}</HStack><small>{modelDesc}</small></VStack>
           {downloading ? <Button size="sm" label={t('@yovoice.action.pause')} icon={<Pause size={16} />} onClick={() => run(() => call('operation.cancel'))} /> : installed ? <Button size="sm" label={t('@yovoice.settings.removeModel')} icon={<Trash2 size={16} />} isDisabled={removeBlocked} tooltip={removeBlocked ? t('@yovoice.settings.removeBlocked') : t('@yovoice.settings.removeTooltip')} onClick={() => run(() => call('model.forget', { id: model.id }))} /> : !model.remotePath ? <Button size="sm" label={t('@yovoice.settings.importGguf')} icon={<FilePlus size={16} />} isDisabled={busy} onClick={() => run(() => call('model.import'))} /> : <Button size="sm" label={download ? t('@yovoice.settings.resumeDownload') : t('@yovoice.settings.downloadModel')} icon={<Download size={16} />} isDisabled={busy} onClick={() => run(() => call('model.download', { id: model.id }))} />}
         </HStack>
@@ -91,18 +96,16 @@ export function Settings({ state, catalog, draft, run }: { state: State; catalog
         </VStack> : null}
         </VStack>;
       })}</section>
-      <details className="settings-help"><summary><ChevronRight size={16} aria-hidden="true" />{t('@yovoice.settings.modelHelpSummary')}</summary><p className="helper muted">{t('@yovoice.settings.modelHelpBody')}</p></details>
-      <p className="helper muted">{t('@yovoice.settings.licenseBlurb')}<Button size="sm" label={t('@yovoice.settings.licenseButton')} variant="secondary" onClick={() => run(async () => { const response = await fetch('./model-license.txt'); if (!response.ok) throw new CallError('@yovoice.error.licenseReadFailed'); setLicense(await response.text()); })} /></p>
+      <HStack gap={3} vAlign="center" wrap="wrap"><small>{t('@yovoice.settings.licenseBlurb')}</small><Button size="sm" label={t('@yovoice.settings.licenseButton')} variant="secondary" onClick={() => run(async () => { const response = await fetch('./model-license.txt'); if (!response.ok) throw new CallError('@yovoice.error.licenseReadFailed'); setLicense(await response.text()); })} /></HStack>
     </VStack> : <VStack className="engine-settings" gap={5} id="engine-panel" role="tabpanel" aria-label={t('@yovoice.settings.tabEngine')}>
       <HStack className="runtime-heading" gap={3} vAlign="center"><Cpu size={22} strokeWidth={1.5} /><h2>audio.cpp</h2><small>v0.7.4</small></HStack>
       <VStack gap={0}>
-        <HStack className="engine-setting-row" hAlign="between" vAlign="center" gap={4} wrap="wrap"><h3>{t('@yovoice.settings.computeDevice')}</h3><Selector size="sm" placement="below" label={t('@yovoice.settings.computeDevice')} isLabelHidden value={preferences.backend} options={[{ value: 'cpu', label: 'CPU' }, ...(isMac ? [{ value: 'metal', label: 'Apple GPU · Metal' }] : [{ value: 'cuda', label: 'NVIDIA GPU · CUDA 12.4' }, { value: 'vulkan', label: t('@yovoice.settings.backend.vulkan') }])]} onChange={backend => run(() => call('preferences.save', { ...preferences, backend }))} isDisabled={busy} width="min(100%, calc(var(--spacing-10) * 6))" className="compute-device" /></HStack>
+        <HStack className="engine-setting-row" hAlign="between" vAlign="center" gap={4} wrap="wrap"><h3>{t('@yovoice.settings.computeDevice')}</h3><Selector size="sm" label={t('@yovoice.settings.computeDevice')} isLabelHidden value={preferences.backend} options={[{ value: 'cpu', label: 'CPU' }, ...(isMac ? [{ value: 'metal', label: 'Apple GPU · Metal' }] : [{ value: 'cuda', label: 'NVIDIA GPU · CUDA 12.4' }, { value: 'vulkan', label: t('@yovoice.settings.backend.vulkan') }])]} onChange={backend => run(() => call('preferences.save', { ...preferences, backend }))} isDisabled={busy} width="min(100%, calc(var(--spacing-10) * 6))" className="compute-device" /></HStack>
         <HStack className="engine-setting-row" hAlign="between" gap={4} vAlign="center" wrap="wrap"><VStack className="grow" gap={1}><h3>{t('@yovoice.settings.runtime')}</h3><small>{runtimeReady ? t('@yovoice.settings.runtimeReady') : t('@yovoice.settings.runtimeMissing')}</small></VStack><Button size="sm" label={runtimeReady ? t('@yovoice.settings.reinstallRuntime') : t('@yovoice.settings.installRuntime')} isDisabled={busy} onClick={() => run(() => call('runtime.install'))} /></HStack>
         <HStack className="engine-setting-row" hAlign="between" gap={4} vAlign="center"><h3>{t('@yovoice.settings.diagnostics')}</h3><Button size="sm" label={t('@yovoice.settings.openLogs')} icon={<ArrowUpRight size={15} />} variant="secondary" onClick={() => run(() => call('logs.open'))} /></HStack>
       </VStack>
-      <details className="settings-help engine-help"><summary><ChevronRight size={15} aria-hidden="true" />{t('@yovoice.settings.engineHelpSummary')}</summary><VStack gap={2}><p className="helper">{isMac ? t('@yovoice.settings.engineHelpMac') : t('@yovoice.settings.engineHelpWin')}</p><p className="helper">{t('@yovoice.settings.engineHelpGpu')}</p></VStack></details>
     </VStack>}
 
-    {license ? <Dialog isOpen onOpenChange={open => { if (!open) setLicense(null); }} width={680} padding={6}><VStack gap={4}><h2 tabIndex={-1} data-autofocus="">{t('@yovoice.settings.licenseTitle')}</h2><pre className="license-text">{license}</pre><Button size="sm" label={t('@yovoice.settings.closeLicense')} onClick={() => setLicense(null)} /></VStack></Dialog> : null}
+    {license ? <AppDialog title={t('@yovoice.settings.licenseTitle')} width={680} onClose={() => setLicense(null)} actions={<Button label={t('@yovoice.settings.closeLicense')} onClick={() => setLicense(null)} />}><pre className="license-text">{license}</pre></AppDialog> : null}
   </VStack>;
 }

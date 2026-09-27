@@ -1,5 +1,5 @@
 import catalog from './catalog.json';
-import { emptyState, type Draft, type State, type Voice, type Preferences, type Character } from '../workbench';
+import { emptyState, type AudioAsset, type Draft, type State, type Voice, type Preferences, type Character, type SynthesisSettings } from '../workbench';
 import { encodeWav, toBase64 } from './sound';
 import { CallError, parseCallError } from './call-error';
 
@@ -67,7 +67,10 @@ export async function call<T = unknown>(method: string, data: unknown = {}): Pro
     publish(); return voice as T;
   }
   if (method === 'draft.save') {
-    const draft = data as Draft; const index = preview.drafts.findIndex(d => d.id === draft.id);
+    const draft = structuredClone(data as Draft); const index = preview.drafts.findIndex(d => d.id === draft.id);
+    draft.createdAt = index < 0 ? new Date().toISOString() : preview.drafts[index]?.createdAt;
+    draft.updatedAt = preview.drafts[index]?.updatedAt;
+    if (index < 0 || JSON.stringify(draft) !== JSON.stringify(preview.drafts[index])) draft.updatedAt = new Date().toISOString();
     if (index < 0) preview.drafts.unshift(draft); else preview.drafts[index] = draft;
     publish(); return true as T;
   }
@@ -80,8 +83,12 @@ export async function call<T = unknown>(method: string, data: unknown = {}): Pro
       else preview.history = preview.history.map(v => v.id === id ? { ...v, title: name.trim() } : v);
     } else {
       const item = kind === 'voices' ? preview.voices.find(v => v.id === id) : preview.history.find(v => v.id === id);
+      if (kind === 'outputs' && preview.drafts.some(d => d.timeline?.tracks.some(t => t.clips.some(c => c.generationId === id)))) throw new CallError('@yovoice.timeline.inUse');
       if (kind === 'voices') {
-        if (preview.characters.some(c => c.settings.voiceId === id || c.settings.emotionVoiceId === id)) throw new CallError('@yovoice.error.voiceInUse');
+        const uses = (s: SynthesisSettings) => s.voiceId === id || s.emotionVoiceId === id;
+        const draftUses = (d: Draft) => uses(d) || d.subtitles?.speakers.some(s => s.settings && uses(s.settings));
+        const names = [...preview.characters.filter(c => uses(c.settings)).map(c => c.name), ...preview.drafts.filter(draftUses).map(d => d.title), ...preview.history.filter(g => draftUses(g.settings)).map(g => g.title)];
+        if (names.length) throw new CallError('@yovoice.error.voiceReferenced', { names: names.join(', ') });
         preview.voices = preview.voices.filter(v => v.id !== id);
         preview.drafts = preview.drafts.map(d => ({ ...d, voiceId: d.voiceId === id ? null : d.voiceId, emotionVoiceId: d.emotionVoiceId === id ? null : d.emotionVoiceId }));
       } else preview.history = preview.history.filter(v => v.id !== id);
@@ -114,6 +121,21 @@ async function blobStore(key: string, value?: Blob): Promise<Blob | undefined> {
     transaction.oncomplete = () => resolve(value ?? request.result); transaction.onerror = () => reject(transaction.error);
   }); } finally { db.close(); }
 }
+export async function importTimelineFile(file: File): Promise<AudioAsset> {
+  if (file.size > 20 * 1024 * 1024) throw new CallError('@yovoice.error.audioTooLarge');
+  const name = file.name.replace(/\.[^.]+$/, '').slice(0, 120);
+  if (native) return call<AudioAsset>('timeline.import', { name, base64: await toBase64(file) });
+  const context = new AudioContext();
+  try {
+    const buffer = await context.decodeAudioData(await file.arrayBuffer());
+    if (buffer.duration < 0.01 || buffer.duration > 3600) throw new CallError('@yovoice.timeline.importDuration');
+    const id = crypto.randomUUID().replaceAll('-', '');
+    const asset = { id, name, fileName: `import-${id}.wav`, duration: buffer.duration };
+    await blobStore(asset.fileName, encodeWav(buffer));
+    return asset;
+  } finally { await context.close(); }
+}
+
 export async function importVoiceFile(file: File): Promise<Voice> {
   if (file.size > 20 * 1024 * 1024) throw new CallError('@yovoice.error.audioTooLarge');
   if (native) return call<Voice>('voice.record', { name: file.name.replace(/\.[^.]+$/, ''), base64: await toBase64(file) });
@@ -131,4 +153,13 @@ export async function mediaUrl(kind: 'voices' | 'outputs', file: string): Promis
   if (native && window.__workbenchMediaBase) return `${window.__workbenchMediaBase}${kind}/${encodeURIComponent(file)}`;
   if (native) return `https://${kind}.workbench.local/${encodeURIComponent(file)}`;
   const blob = await blobStore(file); if (!blob) throw new CallError('@yovoice.error.audioBlobMissing'); return URL.createObjectURL(blob);
+}
+
+export async function saveAudio(blob: Blob, name: string): Promise<boolean> {
+  const fileName = `${name.replace(/[\\/:*?"<>|]/g, '_').slice(0, 100) || 'yovoice'}.wav`;
+  if (native) return call<boolean>('audio.export', { name: fileName, base64: await toBase64(blob) });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a'); link.href = url; link.download = fileName; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return true;
 }

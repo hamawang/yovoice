@@ -96,7 +96,7 @@
     "defaultMessage": "收起侧栏"
   },
   "@yovoice.app.deleteProjectBody": {
-    "defaultMessage": "“{title}”的草稿将被删除，已生成的音频仍保留在历史记录中。"
+    "defaultMessage": "确定删除「{title}」？"
   },
   "@yovoice.app.deleteProjectConfirm": {
     "defaultMessage": "删除作品"
@@ -144,7 +144,7 @@
     "defaultMessage": "调整发音"
   },
   "@yovoice.app.reuseSettings": {
-    "defaultMessage": "复用参数"
+    "defaultMessage": "基于此版本新建"
   },
   "@yovoice.app.saved": {
     "defaultMessage": "已保存"
@@ -233,14 +233,8 @@
   "@yovoice.create.mode.reference": {
     "defaultMessage": "参考演绎"
   },
-  "@yovoice.create.mode.referenceHelp": {
-    "defaultMessage": "从另一段音频参考情绪，保留当前音色。"
-  },
   "@yovoice.create.mode.speaker": {
     "defaultMessage": "跟随音色"
-  },
-  "@yovoice.create.mode.speakerHelp": {
-    "defaultMessage": "沿用参考音色中的自然表达。"
   },
   "@yovoice.create.mode.text": {
     "defaultMessage": "文字指导"
@@ -663,28 +657,22 @@
     "defaultMessage": "中文"
   },
   "@yovoice.library.addFirstVoice": {
-    "defaultMessage": "添加第一个声音"
+    "defaultMessage": "添加参考音频"
   },
   "@yovoice.library.addVoice": {
-    "defaultMessage": "添加声音"
-  },
-  "@yovoice.library.emptyHistoryBody": {
-    "defaultMessage": "生成的音频和参数会自动保存在这里。"
+    "defaultMessage": "添加参考音频"
   },
   "@yovoice.library.emptyHistoryTitle": {
-    "defaultMessage": "让第一句话被听见"
-  },
-  "@yovoice.library.emptyVoicesBody": {
-    "defaultMessage": "导入清晰的人声，或录下你自己的声音。"
+    "defaultMessage": "暂无历史版本"
   },
   "@yovoice.library.emptyVoicesTitle": {
-    "defaultMessage": "从一个声音开始"
+    "defaultMessage": "还没有参考音频"
   },
   "@yovoice.library.historyCount": {
     "defaultMessage": "{count} 条生成记录"
   },
   "@yovoice.library.historyTitle": {
-    "defaultMessage": "历史记录"
+    "defaultMessage": "历史版本"
   },
   "@yovoice.library.startCreating": {
     "defaultMessage": "开始创作"
@@ -717,7 +705,7 @@
     "defaultMessage": "名称"
   },
   "@yovoice.media.nounHistory": {
-    "defaultMessage": "历史"
+    "defaultMessage": "音频"
   },
   "@yovoice.media.nounVoice": {
     "defaultMessage": "声音"
@@ -741,7 +729,7 @@
     "defaultMessage": "删除作品：{title}"
   },
   "@yovoice.nav.history": {
-    "defaultMessage": "历史记录"
+    "defaultMessage": "全部生成音频"
   },
   "@yovoice.nav.main": {
     "defaultMessage": "主导航"
@@ -772,6 +760,9 @@
   },
   "@yovoice.player.noAudio": {
     "defaultMessage": "暂无音频"
+  },
+  "@yovoice.player.stop": {
+    "defaultMessage": "停止"
   },
   "@yovoice.player.pause": {
     "defaultMessage": "暂停"
@@ -857,18 +848,6 @@
   "@yovoice.settings.downloadSource": {
     "defaultMessage": "下载来源"
   },
-  "@yovoice.settings.engineHelpGpu": {
-    "defaultMessage": "GPU 需要兼容的驱动；启动或生成失败时，可尝试切换 CPU。取消生成会释放引擎，下次生成需重新加载。"
-  },
-  "@yovoice.settings.engineHelpMac": {
-    "defaultMessage": "应用内置 Metal 内核，也可切换 CPU。"
-  },
-  "@yovoice.settings.engineHelpSummary": {
-    "defaultMessage": "安装与排障说明"
-  },
-  "@yovoice.settings.engineHelpWin": {
-    "defaultMessage": "应用内置 CPU 内核；选择 NVIDIA GPU 后可下载 CUDA 内核，无需安装 Python。"
-  },
   "@yovoice.settings.importDirectory": {
     "defaultMessage": "指定目录"
   },
@@ -882,7 +861,7 @@
     "defaultMessage": "安装内核"
   },
   "@yovoice.settings.licenseBlurb": {
-    "defaultMessage": "IndexTTS 遵循 bilibili 模型协议；VoxCPM2、Qwen3-TTS 使用 Apache-2.0；OmniVoice 权重使用 CC-BY-NC，仅限非商业用途。"
+    "defaultMessage": "OmniVoice 仅限非商业用途"
   },
   "@yovoice.settings.licenseButton": {
     "defaultMessage": "IndexTTS 协议"
@@ -901,12 +880,6 @@
   },
   "@yovoice.settings.modelDirectory": {
     "defaultMessage": "模型保存位置"
-  },
-  "@yovoice.settings.modelHelpBody": {
-    "defaultMessage": "支持上述 audio.cpp GGUF 包，导入后自动校验。移除模型仅解除登记，保留本地文件；更改保存位置仅影响后续下载。"
-  },
-  "@yovoice.settings.modelHelpSummary": {
-    "defaultMessage": "模型与文件说明"
   },
   "@yovoice.settings.openFolder": {
     "defaultMessage": "打开文件夹"
@@ -972,7 +945,7 @@
     "defaultMessage": "已校验"
   },
   "@yovoice.voice.addTitle": {
-    "defaultMessage": "添加声音"
+    "defaultMessage": "添加参考音频"
   },
   "@yovoice.voice.audition": {
     "defaultMessage": "试听{name}"
@@ -1005,7 +978,7 @@
     "defaultMessage": "导入参考音频"
   },
   "@yovoice.voice.pickTitle": {
-    "defaultMessage": "选择声音"
+    "defaultMessage": "选择参考音频"
   },
   "@yovoice.voice.record": {
     "defaultMessage": "录制声音"
@@ -1046,9 +1019,6 @@
   "@yovoice.vox.generationMode": {
     "defaultMessage": "生成方式"
   },
-  "@yovoice.vox.guidanceHelp": {
-    "defaultMessage": "默认 2.0；提高数值会增强提示约束，过高可能影响自然度。"
-  },
   "@yovoice.vox.guidanceScale": {
     "defaultMessage": "引导强度"
   },
@@ -1059,7 +1029,7 @@
     "defaultMessage": "参考音频原文"
   },
   "@yovoice.vox.referenceTextPlaceholder": {
-    "defaultMessage": "准确填写参考音频中说出的内容，不是待生成的正文。"
+    "defaultMessage": "参考音频中说出的内容"
   },
   "@yovoice.vox.styleGuidance": {
     "defaultMessage": "风格指导（可选）"
@@ -1174,9 +1144,6 @@
   },
   "@yovoice.reference.tags": {
     "defaultMessage": "非语言声音"
-  },
-  "@yovoice.reference.tagsHelp": {
-    "defaultMessage": "点击添加到正文末尾，可在正文中移动位置。"
   },
   "@yovoice.reference.male": {
     "defaultMessage": "男"
@@ -1410,10 +1377,7 @@
     "defaultMessage": "该模型包尚未发布到下载源，请导入已验证的 Kokoro 多语言 GGUF 包。"
   },
   "@yovoice.settings.modelDesc.kokoro": {
-    "defaultMessage": "内置音色，多语言离线合成，无需参考录音；首次加载会展开语言资源。"
-  },
-  "@yovoice.create.kokoroHelp": {
-    "defaultMessage": "语言由所选音色决定；无需上传参考录音。"
+    "defaultMessage": "内置音色 · 多语言"
   },
   "@yovoice.language.en-us": {
     "defaultMessage": "英语（美式）"
@@ -1431,10 +1395,10 @@
     "defaultMessage": "印地语"
   },
   "@yovoice.nav.characters": {
-    "defaultMessage": "角色库"
+    "defaultMessage": "声音库"
   },
   "@yovoice.character.create": {
-    "defaultMessage": "新建角色"
+    "defaultMessage": "创建角色"
   },
   "@yovoice.character.saveAs": {
     "defaultMessage": "保存为角色"
@@ -1458,10 +1422,10 @@
     "defaultMessage": "保存角色"
   },
   "@yovoice.character.copy": {
-    "defaultMessage": "另存为新角色"
+    "defaultMessage": "另存角色"
   },
   "@yovoice.character.apply": {
-    "defaultMessage": "应用角色"
+    "defaultMessage": "使用角色"
   },
   "@yovoice.character.preview": {
     "defaultMessage": "生成试听"
@@ -1479,13 +1443,13 @@
     "defaultMessage": "尚未生成试听"
   },
   "@yovoice.character.empty": {
-    "defaultMessage": "暂无角色"
+    "defaultMessage": "还没有角色"
   },
   "@yovoice.character.delete": {
     "defaultMessage": "删除角色"
   },
   "@yovoice.character.deleteConfirm": {
-    "defaultMessage": "确认删除此角色？引用的音色和作品历史会保留。"
+    "defaultMessage": "删除库中的角色，已有作品保留使用时的参数。"
   },
   "@yovoice.character.missingModel": {
     "defaultMessage": "模型未安装，可保存参数，安装后可生成试听。"
@@ -1494,7 +1458,7 @@
     "defaultMessage": "参考音色缺失，请重新选择。"
   },
   "@yovoice.character.close": {
-    "defaultMessage": "退出"
+    "defaultMessage": "返回"
   },
   "@yovoice.character.listen": {
     "defaultMessage": "试听角色"
@@ -1503,7 +1467,7 @@
     "defaultMessage": "内置说话人 / 声音描述"
   },
   "@yovoice.voice.save": {
-    "defaultMessage": "保存为音色"
+    "defaultMessage": "保存为参考音频"
   },
   "@yovoice.voice.edit": {
     "defaultMessage": "编辑音色信息"
@@ -1521,7 +1485,7 @@
     "defaultMessage": "完整片段需为 1～60 秒且不超过 20 MB。此处不裁剪音频。"
   },
   "@yovoice.voice.sourceGeneration": {
-    "defaultMessage": "来自生成历史"
+    "defaultMessage": "来自生成音频"
   },
   "@yovoice.voice.sourceImport": {
     "defaultMessage": "导入 / 录音"
@@ -1562,9 +1526,6 @@
   "@yovoice.character.nameLimit": {
     "defaultMessage": "角色名称不能超过 120 个字符。"
   },
-  "@yovoice.character.update": {
-    "defaultMessage": "用当前参数更新角色"
-  },
   "@yovoice.character.applied": {
     "defaultMessage": "已应用角色的声音参数，作品正文保持不变。"
   },
@@ -1587,19 +1548,91 @@
     "defaultMessage": "音色已保存，可在音色库中查看和使用。"
   },
   "@yovoice.library.searchVoices": {
-    "defaultMessage": "搜索声音"
+    "defaultMessage": "搜索参考音频"
   },
   "@yovoice.library.searchHistory": {
-    "defaultMessage": "搜索历史记录"
+    "defaultMessage": "搜索历史版本"
   },
   "@yovoice.library.noSearchResults": {
     "defaultMessage": "没有匹配的结果"
   },
   "@yovoice.settings.modelDesc.kokoroOfficial": {
-    "defaultMessage": "官方 Q8 下载包 · 中英等 8 种语言 · 49 个预设音色，不含日语词典。"
+    "defaultMessage": "8 种语言 · 49 种音色 · 不含日语"
   },
-  "@yovoice.timeline.importDuration": {
-    "defaultMessage": "音频时长需在 0.01 秒至 1 小时之间。"
+  "@yovoice.subtitle.import": {
+    "defaultMessage": "导入字幕"
+  },
+  "@yovoice.subtitle.file": {
+    "defaultMessage": "字幕文件"
+  },
+  "@yovoice.subtitle.invalid": {
+    "defaultMessage": "字幕格式或内容无效。支持 SRT、VTT、ASS/SSA，最多 2 MB、2000 句、100 位说话人和 12000 字；请检查时间和说话人设置。"
+  },
+  "@yovoice.subtitle.encoding": {
+    "defaultMessage": "无法读取字幕编码，请先保存为 UTF-8 或带 BOM 的 UTF-16。"
+  },
+  "@yovoice.subtitle.speaker": {
+    "defaultMessage": "说话人 {n}"
+  },
+  "@yovoice.subtitle.help": {
+    "defaultMessage": "按台词顺序生成独立音频片段，使用各说话人的声音；时间轴可裁剪、删除和重生成，导出时合并。不自动对齐原字幕时间。"
+  },
+  "@yovoice.subtitle.currentSettings": {
+    "defaultMessage": "默认声音"
+  },
+  "@yovoice.subtitle.savedCharacter": {
+    "defaultMessage": "已保存的角色参数"
+  },
+  "@yovoice.subtitle.addSpeaker": {
+    "defaultMessage": "添加说话人"
+  },
+  "@yovoice.subtitle.lineSpeaker": {
+    "defaultMessage": "第 {n} 句说话人"
+  },
+  "@yovoice.subtitle.lineText": {
+    "defaultMessage": "第 {n} 句台词"
+  },
+  "@yovoice.subtitle.previous": {
+    "defaultMessage": "上一页"
+  },
+  "@yovoice.subtitle.next": {
+    "defaultMessage": "下一页"
+  },
+  "@yovoice.subtitle.progress": {
+    "defaultMessage": "正在生成字幕 {n} / {total}"
+  },
+  "@yovoice.subtitle.addCue": {
+    "defaultMessage": "新增台词"
+  },
+  "@yovoice.subtitle.speakerHelp": {
+    "defaultMessage": "参数应用于该说话人的所有台词"
+  },
+  "@yovoice.subtitle.customSettings": {
+    "defaultMessage": "自定义声音"
+  },
+  "@yovoice.subtitle.settings": {
+    "defaultMessage": "说话人设置"
+  },
+  "@yovoice.subtitle.speakers": {
+    "defaultMessage": "说话人 · {count}"
+  },
+  "@yovoice.subtitle.instructions": {
+    "defaultMessage": "配音说明"
+  },
+  "@yovoice.subtitle.cues": {
+    "defaultMessage": "字幕 · {count} 句"
+  },
+  "@yovoice.subtitle.showTimes": {
+    "defaultMessage": "显示时间"
+  },
+  "@yovoice.subtitle.hideTimes": {
+    "defaultMessage": "隐藏时间"
+  },
+  "@yovoice.subtitle.defaultVoice": {
+    "defaultMessage": "默认声音"
+  },
+  "@yovoice.subtitle.defaultVoiceHelp": {
+    "defaultMessage": "用于未指定角色的说话人"
   },
   "@yovoice.timeline.invalid": {
     "defaultMessage": "音轨设置无效，请检查片段范围；最多 32 条音轨、2000 个片段及 24 小时。"
@@ -1607,13 +1640,259 @@
   "@yovoice.timeline.inUse": {
     "defaultMessage": "这段音频正在作品音轨中使用，请先移除对应片段。"
   },
-  "@yovoice.subtitle.invalid": {
-    "defaultMessage": "字幕格式或内容无效。支持 SRT、VTT、ASS/SSA，最多 2 MB、2000 句、100 位说话人和 12000 字；请检查时间和说话人设置。"
+  "@yovoice.timeline.track": {
+    "defaultMessage": "音轨 {n}"
   },
-  "@yovoice.subtitle.progress": {
-    "defaultMessage": "正在生成字幕 {n} / {total}"
+  "@yovoice.timeline.add": {
+    "defaultMessage": "新增音轨"
+  },
+  "@yovoice.timeline.resize": {
+    "defaultMessage": "调整音轨区高度"
+  },
+  "@yovoice.timeline.split": {
+    "defaultMessage": "分割片段"
+  },
+  "@yovoice.timeline.removeClip": {
+    "defaultMessage": "删除片段"
+  },
+  "@yovoice.timeline.position": {
+    "defaultMessage": "起点（秒）"
+  },
+  "@yovoice.timeline.moveTo": {
+    "defaultMessage": "移动到音轨"
+  },
+  "@yovoice.timeline.hint": {
+    "defaultMessage": "选择片段，在播放头处分割；拖动片段可调整位置或音轨。"
+  },
+  "@yovoice.timeline.tracks": {
+    "defaultMessage": "音轨"
+  },
+  "@yovoice.timeline.name": {
+    "defaultMessage": "{name}名称"
+  },
+  "@yovoice.timeline.mute": {
+    "defaultMessage": "静音{name}"
+  },
+  "@yovoice.timeline.unmute": {
+    "defaultMessage": "取消静音{name}"
+  },
+  "@yovoice.timeline.removeTrack": {
+    "defaultMessage": "删除{name}（仅空轨）"
+  },
+  "@yovoice.timeline.missing": {
+    "defaultMessage": "源音频缺失"
+  },
+  "@yovoice.timeline.importTo": {
+    "defaultMessage": "添加音频到{name}"
+  },
+  "@yovoice.timeline.fromHistory": {
+    "defaultMessage": "从历史版本添加"
+  },
+  "@yovoice.nav.projects": {
+    "defaultMessage": "作品"
+  },
+  "@yovoice.nav.library": {
+    "defaultMessage": "声音库"
+  },
+  "@yovoice.project.new": {
+    "defaultMessage": "新建作品"
+  },
+  "@yovoice.project.text": {
+    "defaultMessage": "语音生成"
+  },
+  "@yovoice.project.story": {
+    "defaultMessage": "故事配音"
+  },
+  "@yovoice.project.subtitle": {
+    "defaultMessage": "字幕配音"
+  },
+  "@yovoice.project.search": {
+    "defaultMessage": "搜索作品"
+  },
+  "@yovoice.project.empty": {
+    "defaultMessage": "还没有作品"
+  },
+  "@yovoice.project.all": {
+    "defaultMessage": "全部类型"
+  },
+  "@yovoice.project.copy": {
+    "defaultMessage": "复制作品"
+  },
+  "@yovoice.project.rename": {
+    "defaultMessage": "重命名作品"
+  },
+  "@yovoice.project.open": {
+    "defaultMessage": "打开作品"
+  },
+  "@yovoice.project.unknownDate": {
+    "defaultMessage": "尚无修改时间"
+  },
+  "@yovoice.library.voicesTab": {
+    "defaultMessage": "角色"
+  },
+  "@yovoice.library.referencesTab": {
+    "defaultMessage": "参考音频"
+  },
+  "@yovoice.library.use": {
+    "defaultMessage": "使用角色"
+  },
+  "@yovoice.library.target": {
+    "defaultMessage": "选择应用位置"
+  },
+  "@yovoice.library.targetProject": {
+    "defaultMessage": "应用到作品"
+  },
+  "@yovoice.library.targetSpeaker": {
+    "defaultMessage": "应用到角色"
+  },
+  "@yovoice.library.narrator": {
+    "defaultMessage": "旁白"
+  },
+  "@yovoice.library.newText": {
+    "defaultMessage": "新建文本配音"
+  },
+  "@yovoice.library.apply": {
+    "defaultMessage": "应用角色"
+  },
+  "@yovoice.library.noTarget": {
+    "defaultMessage": "选择作品和角色后应用，不改变其他角色。"
+  },
+  "@yovoice.library.newVoice": {
+    "defaultMessage": "未命名角色"
+  },
+  "@yovoice.library.save": {
+    "defaultMessage": "保存角色"
+  },
+  "@yovoice.library.saveApply": {
+    "defaultMessage": "保存并应用"
+  },
+  "@yovoice.library.unsaved": {
+    "defaultMessage": "保存角色修改？"
+  },
+  "@yovoice.library.unsavedBody": {
+    "defaultMessage": "离开前保存角色，或放弃本次修改。"
+  },
+  "@yovoice.library.discard": {
+    "defaultMessage": "放弃修改"
+  },
+  "@yovoice.library.continue": {
+    "defaultMessage": "继续编辑"
+  },
+  "@yovoice.library.clearSearch": {
+    "defaultMessage": "清除筛选"
+  },
+  "@yovoice.history.source": {
+    "defaultMessage": "打开来源作品"
+  },
+  "@yovoice.history.sourceMissing": {
+    "defaultMessage": "来源作品已删除"
+  },
+  "@yovoice.history.stale": {
+    "defaultMessage": "正文或参数已修改，音频尚未更新"
+  },
+  "@yovoice.app.saveFailed": {
+    "defaultMessage": "保存失败，点击重试"
+  },
+  "@yovoice.subtitle.roleName": {
+    "defaultMessage": "角色名称"
   },
   "@yovoice.error.voiceReferenced": {
     "defaultMessage": "参考音频正在被「{names}」使用，请先替换或移除引用。"
+  },
+  "@yovoice.voice.confirmSelection": {
+    "defaultMessage": "使用所选参考音频"
+  },
+  "@yovoice.voice.rerecord": {
+    "defaultMessage": "重新录音"
+  },
+  "@yovoice.voice.stopRecord": {
+    "defaultMessage": "停止录音"
+  },
+  "@yovoice.voice.saveRecording": {
+    "defaultMessage": "保存录音"
+  },
+  "@yovoice.voice.recordPreview": {
+    "defaultMessage": "录音试听"
+  },
+  "@yovoice.voice.unsaved": {
+    "defaultMessage": "保存参考音频修改？"
+  },
+  "@yovoice.timeline.trim": {
+    "defaultMessage": "截取范围"
+  },
+  "@yovoice.timeline.trimStart": {
+    "defaultMessage": "入点（秒）"
+  },
+  "@yovoice.timeline.trimEnd": {
+    "defaultMessage": "出点（秒）"
+  },
+  "@yovoice.timeline.regenerate": {
+    "defaultMessage": "重新生成片段"
+  },
+  "@yovoice.timeline.regenerateHint": {
+    "defaultMessage": "重新生成片段（重置裁剪，后续片段顺延）"
+  },
+  "@yovoice.timeline.export": {
+    "defaultMessage": "导出音轨"
+  },
+  "@yovoice.timeline.exportConfirm": {
+    "defaultMessage": "导出 WAV"
+  },
+  "@yovoice.timeline.exportName": {
+    "defaultMessage": "文件名"
+  },
+  "@yovoice.timeline.emptyExport": {
+    "defaultMessage": "没有可导出的音频，请添加片段或取消音轨静音。"
+  },
+  "@yovoice.timeline.exportLimit": {
+    "defaultMessage": "当前导出支持一小时以内的音轨，请缩短导出内容。"
+  },
+  "@yovoice.timeline.audio": {
+    "defaultMessage": "音频"
+  },
+  "@yovoice.timeline.upload": {
+    "defaultMessage": "上传音频"
+  },
+  "@yovoice.timeline.searchHistory": {
+    "defaultMessage": "搜索生成音频"
+  },
+  "@yovoice.timeline.noHistory": {
+    "defaultMessage": "暂无匹配的生成音频"
+  },
+  "@yovoice.timeline.importDuration": {
+    "defaultMessage": "音频时长需在 0.01 秒至 1 小时之间。"
+  },
+  "@yovoice.timeline.exportFormat": {
+    "defaultMessage": "WAV · 24 kHz · 单声道 · 最长 1 小时"
+  },
+  "@yovoice.character.new": {
+    "defaultMessage": "新建角色"
+  },
+  "@yovoice.history.audioActions": {
+    "defaultMessage": "音频操作"
+  },
+  "@yovoice.history.versions": {
+    "defaultMessage": "历史版本"
+  },
+  "@yovoice.history.backProject": {
+    "defaultMessage": "返回"
+  },
+  "@yovoice.project.more": {
+    "defaultMessage": "更多操作"
+  },
+  "@yovoice.project.created": {
+    "defaultMessage": "创建于 {date}"
+  },
+  "@yovoice.project.new.story": {
+    "defaultMessage": "新建故事配音"
+  },
+  "@yovoice.project.new.text": {
+    "defaultMessage": "新建语音"
+  },
+  "@yovoice.project.renameShort": {
+    "defaultMessage": "重命名"
+  },
+  "@yovoice.project.copyShort": {
+    "defaultMessage": "复制"
   }
 }
