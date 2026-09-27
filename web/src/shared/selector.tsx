@@ -1,7 +1,6 @@
 import { useId, type ReactNode } from 'react';
 import { Selector as AstryxSelector, type SelectorProps } from '@astryxdesign/core/Selector';
 import { VStack } from '@astryxdesign/core/Layout';
-import { isMac } from './lib/client';
 
 export { SelectorOption } from '@astryxdesign/core/Selector';
 
@@ -14,14 +13,16 @@ function nativeOptions(options: SelectorProps['options']): ReactNode {
   });
 }
 
-export function Selector(props: SelectorProps) {
+export function Selector(props: SelectorProps & { placement?: never }) {
   const generatedId = useId();
-  // macOS 14/15 的 WebKit 没有完整的锚点定位，使用系统下拉菜单，避免弹层落在左上角。
-  if (!isMac || (CSS.supports('anchor-name', '--anchor') && CSS.supports('position-area', 'bottom'))) return <AstryxSelector {...props} />;
+  // 支持定位时统一向下展开；旧 WebKit 和 WebView 缺少能力时使用系统菜单，避免弹层错位。
+  const supportsPopup = typeof HTMLElement.prototype.showPopover === 'function'
+    && CSS.supports('anchor-name', '--anchor') && CSS.supports('position-area', 'bottom');
+  if (supportsPopup) return <AstryxSelector {...props} placement="below" />;
   const id = props.id ?? generatedId;
   return <VStack gap={2} className={props.className} style={{ width: props.width, ...props.style }}>
     {!props.isLabelHidden ? <label htmlFor={id}>{props.label}</label> : null}
-    <select id={id} className="native-selector" aria-label={props.label} name={props.htmlName}
+    <select id={id} className="native-selector" data-size={props.size ?? 'md'} data-variant={props.variant ?? 'input'} aria-label={props.label} name={props.htmlName}
       aria-describedby={props.description ? `${id}-description` : undefined}
       disabled={props.isDisabled || props.isReadOnly || props.isLoading} required={props.isRequired}
       value={props.value ?? ''} onChange={event => props.onChange?.(event.target.value)}>
