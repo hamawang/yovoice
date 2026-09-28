@@ -31,5 +31,17 @@
   "packageManager": "pnpm@9.15.2",
   "engines": {
     "node": ">=22"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "@astryxdesign/core@0.6.1": "patches/@astryxdesign__core@0.6.1.patch"
+    },
+    "packageExtensions": {
+      "@astryxdesign/core@0.6.1": {
+        "dependencies": {
+          "@floating-ui/dom": "1.8.0"
+        }
+      }
+    }
   }
 }

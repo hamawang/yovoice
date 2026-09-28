@@ -15,9 +15,8 @@ function nativeOptions(options: SelectorProps['options']): ReactNode {
 
 export function Selector(props: SelectorProps & { placement?: never }) {
   const generatedId = useId();
-  // 支持定位时统一向下展开；旧 WebKit 和 WebView 缺少能力时使用系统菜单，避免弹层错位。
-  const supportsPopup = typeof HTMLElement.prototype.showPopover === 'function'
-    && CSS.supports('anchor-name', '--anchor') && CSS.supports('position-area', 'bottom');
+  // 缺少 CSS 锚点时由共享 Layer 补定位；仅无 Popover API 的环境使用系统菜单。
+  const supportsPopup = typeof HTMLElement.prototype.showPopover === 'function';
   if (supportsPopup) return <AstryxSelector {...props} placement="below" />;
   const id = props.id ?? generatedId;
   return <VStack gap={2} className={props.className} style={{ width: props.width, ...props.style }}>
