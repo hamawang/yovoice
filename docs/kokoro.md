@@ -2,12 +2,13 @@
 
 Kokoro 使用内置音色，不需要参考录音。v1.0 包含 54 个音色，支持中文、英语（美式与英式）、日语、西班牙语、法语、印地语、意大利语和巴西葡萄牙语。v1.1-zh 包含 100 个中文音色及 Maple、Sol、Vale 三个英文音色；不能沿用 v1.0 的音色 ID。
 
-官方版 `kokoro-82m-q8` 可直接下载 audio.cpp 发布的 Q8 GGUF，约 190 MB。使用独立固定的 Hugging Face 修订及 SHA-256 校验，支持 ModelScope、Hugging Face 和镜像源。它没有内嵌 UniDic，因此界面只提供日语以外的 8 种语言、49 个音色。
+官方版 `kokoro-82m-q8` 和 `kokoro-82m-bf16` 可直接下载 audio.cpp 发布的 GGUF：Q8 约 190 MB，BF16 约 212 MB。BF16 是转换后的浮点模型包，不是原始 PyTorch 权重。使用独立固定的 Hugging Face 修订及 SHA-256 校验，支持 ModelScope、Hugging Face 和镜像源。两种精度均未内嵌 UniDic，因此界面只提供日语以外的 8 种语言、49 个音色。
 
 原有 `kokoro-1.0-q8` 完整多语言包和 `kokoro-1.1-zh-q8` 仍保留导入方式，大小和 SHA-256 必须与目录一致。官方小包与完整包分开登记，不替换已有模型或角色引用；不能直接导入 PyTorch 权重。
 
 ```sh
 yovoice models download kokoro-82m-q8
+yovoice models download kokoro-82m-bf16
 yovoice generate --model kokoro-82m-q8 --speaker zf_xiaobei --text '你好，欢迎使用语音合成。' --output official.wav
 yovoice models import /path/to/kokoro-82m-1.1-zh-multilingual-q8_0.gguf
 yovoice generate --model kokoro-1.1-zh-q8 --speaker zf_001 --text '你好，欢迎使用语音合成。' --output hello.wav
@@ -21,7 +22,7 @@ yovoice generate --model kokoro-1.1-zh-q8 --speaker zf_001 --text '你好，欢�
 
 v1.1-zh 的中文音素表不同于 v1.0。转换脚本使用 Misaki 的 v1.1 中文前端生成字词读音，保留词内变调及儿化；推理仍使用 audio.cpp 的原生分词和数字处理。它与 Python KPipeline 的跨词变调及中英混排处理并非完全等价。模型标记为 experimental，音频生成成功不代表完成主观音质验收。
 
-当前原生验证覆盖 macOS ARM64 CPU，以及 v1.1-zh 的 Metal 英文推理。Windows / Linux 打包路径不等于这些平台的实机推理已经验证；其他 GPU 后端也须单独验证。
+当前原生验证覆盖 macOS ARM64 CPU（含 Official BF16 的中、英文生成），以及 v1.1-zh 的 Metal 英文推理。Windows / Linux 打包路径不等于这些平台的实机推理已经验证；其他 GPU 后端也须单独验证。
 
 ## 制作模型
 
