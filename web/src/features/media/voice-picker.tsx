@@ -109,13 +109,13 @@ export function VoicePicker({ voices, onClose, onSelect, adding = false }: { add
           }} /></HStack>
         </> : <Button label={recording ? t('@yovoice.voice.stopRecord') : t('@yovoice.voice.startRecord')} icon={recording ? <Square size={17} /> : <Mic size={17} />} variant="primary" isDisabled={busy} onClick={() => void record()} />}
       </VStack> : null}
-      {!adding && !showRecording && voices.length ? <TextInput label={t('@yovoice.library.searchVoices')} isLabelHidden placeholder={t('@yovoice.library.searchVoices')} startIcon={<Search />} value={query} onChange={setQuery} hasClear /> : null}
-      {!adding && !showRecording ? <VStack className="voice-list" data-editing={!!crop || showRecording || !!preview} gap={0}>{voices.length ? voices.filter(v => v.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())).map(voice => <HStack key={voice.id} className="voice-row" data-selected={selected?.id === voice.id} gap={3} vAlign="center">
+      {!adding && !showRecording && voices.length ? <TextInput label={t('@yovoice.library.searchVoices')} isLabelHidden placeholder={t('@yovoice.library.searchVoices')} startIcon={<Search />} value={query} onChange={value => { setQuery(value); setPreview(null); }} hasClear /> : null}
+      {!adding && !showRecording ? <VStack className="voice-list" data-editing={!!crop} gap={0}>{voices.length ? voices.filter(v => v.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())).map(voice => <HStack key={voice.id} className="voice-row" data-selected={selected?.id === voice.id} gap={3} vAlign="center">
         <HStack className="voice-choice-mark" gap={0}>{selected?.id === voice.id ? <Check size={18} /> : <AudioLines className="muted" size={18} strokeWidth={1.5} />}</HStack><Button label={voice.name} variant="ghost" className="grow text-left" isDisabled={busy || recording} aria-pressed={selected?.id === voice.id} onClick={() => setSelected(voice)} /><small>{formatTime(voice.duration)}</small>
-        <Button label={t('@yovoice.voice.audition', { name: voice.name })} size="sm" icon={<Play size={16} />} isIconOnly variant="ghost" isDisabled={recording || busy} onClick={() => void audition(voice)} />
-        <Button label={t('@yovoice.voice.crop')} size="sm" variant="secondary" isDisabled={recording || busy} onClick={() => { setCrop(voice); setShowRecording(false); setRange([0, voice.duration]); }} />
+        <Player inline={{ label: t('@yovoice.voice.audition', { name: voice.name }), select: () => audition(voice) }} track={preview?.id === voice.id ? preview : null} suspended={recording || busy}
+          onError={message => { setPreview(null); setError(formatCallError(t, new Error(message))); }} />
+        <Button label={t('@yovoice.voice.crop')} size="sm" variant="secondary" isDisabled={recording || busy} onClick={() => { setPreview(null); setCrop(voice); setShowRecording(false); setRange([0, voice.duration]); }} />
       </HStack>) : null}</VStack> : null}
-      {preview ? <VStack gap={2}><small>{preview.name}</small><Player compact track={preview} suspended={recording || busy} onError={message => setError(formatCallError(t, new Error(message)))} /></VStack> : null}
       {crop ? <VStack gap={3}><h3>{t('@yovoice.voice.cropTitle', { name: crop.name })}</h3><Slider label={t('@yovoice.voice.cropRange')} value={range} min={0} max={crop.duration} step={0.1} onChange={(value: [number, number]) => setRange(value)} formatValue={formatTime} valueDisplay="text" /><Button label={t('@yovoice.voice.saveCrop')} variant="primary" isLoading={busy} onClick={() => void trim()} /></VStack> : null}
   </AppDialog>;
 }

@@ -13,9 +13,9 @@ import type { Track } from '../../shared/workbench';
 // 头像素材仅在展示库列表时加载，避免进入创作首屏主包。
 const SeededAvatar = lazy(() => import('../../shared/ui/seeded-avatar').then(module => ({ default: module.SeededAvatar })));
 
-export function Player({ track, onError, suspended, compact = false, historyControl, actions, laneActions, avatar }: { avatar?: { seed: string; label: string; disabled?: boolean; select: () => void }; actions?: ReactNode; laneActions?: ReactNode; historyControl?: ReactNode; compact?: boolean; suspended: boolean; track: Track | null; onError: (message: string) => void }) {
+export function Player({ track, onError, suspended, compact = false, historyControl, actions, laneActions, avatar, inline }: { inline?: { label: string; select: () => void }; avatar?: { seed: string; label: string; disabled?: boolean; select: () => void }; actions?: ReactNode; laneActions?: ReactNode; historyControl?: ReactNode; compact?: boolean; suspended: boolean; track: Track | null; onError: (message: string) => void }) {
   const t = useTranslator();
-  const panel = useAudioPanel(!!track || !!historyControl, compact || avatar ? undefined : 'audio-player-compact-height');
+  const panel = useAudioPanel(!!track || !!historyControl, compact || avatar || inline ? undefined : 'audio-player-compact-height');
   const audio = useRef<HTMLAudioElement>(null);
   const autoplay = useRef(false);
   const lane = useRef<HTMLElement>(null);
@@ -30,9 +30,10 @@ export function Player({ track, onError, suspended, compact = false, historyCont
     setUrl(''); setTime(0); setDuration(0); setPeaks([]); setPlaying(false);
     if (track) void (async () => {
       try {
-        resource = await mediaUrl(track.kind, track.fileName); if (disposed) return;
+        resource = await mediaUrl(track.kind, track.fileName);
+        if (disposed) { if (resource.startsWith('blob:')) URL.revokeObjectURL(resource); return; }
         setUrl(resource);
-        if (avatar || compact) return;
+        if (avatar || compact || inline) return;
         const context = new AudioContext();
         try {
           const response = await fetch(resource); if (!response.ok) throw new CallError('@yovoice.error.audioReadFailed');
@@ -91,6 +92,12 @@ export function Player({ track, onError, suspended, compact = false, historyCont
     onTimeUpdate={() => setTime(audio.current?.currentTime ?? 0)}
     onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
     onError={() => { if (url) onError('@yovoice.error.audioPlayFailed'); }} />;
+  if (inline) return <>
+    {media}
+    <Button label={playing ? t('@yovoice.player.pause') : inline.label} size="sm" variant="ghost" isIconOnly
+      icon={playing ? <Pause size={16} /> : <Play size={16} />} isDisabled={suspended}
+      onClick={() => { if (track && url) void toggle(); else inline.select(); }} />
+  </>;
   if (avatar) return <HStack className="avatar-player" data-playing={playing} gap={0}>
     {media}
     <Button className="avatar-toggle" label={playing ? t('@yovoice.player.stop') : avatar.label} isIconOnly variant="ghost" isDisabled={avatar.disabled || suspended}
