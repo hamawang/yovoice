@@ -24,7 +24,7 @@ yovoice 是一款适用于 macOS 和 Windows 的开源声音创作工具，在�
 - **音色与表达** — 跟随参考音色、模仿参考演绎、调整情绪，或用文字描述想要的表达方式。
 - **完整音频流程** — 导入或录制参考音频、裁剪片段、试听语音、导出作品。
 - **声音设计与克隆** — VoxCPM2 支持文字设计音色、带风格指导的克隆及参考原文辅助的精细克隆，自动多语言、48 kHz 输出。
-- **本地模型** — 通过 audio.cpp 运行 IndexTTS 2.0 / 2.5、VoxCPM2、OmniVoice 和 Qwen3-TTS，支持模型下载续传与 GGUF 导入。
+- **本地模型** — 通过 audio.cpp 运行 IndexTTS 2.0 / 2.5、VoxCPM2、OmniVoice、Qwen3-TTS 和 Kokoro，支持模型下载续传与 GGUF 导入。
 - **硬件加速** — Apple Silicon 支持 Metal；Windows 支持 CPU、NVIDIA CUDA 和实验性 Vulkan。
 - **Agent Skill** — 让 AI Agent 准备本地语音生成环境，根据文稿和参考音频完成配音。
 
@@ -32,15 +32,20 @@ yovoice 是一款适用于 macOS 和 Windows 的开源声音创作工具，在�
 
 ## 支持模型
 
-| 模型 | 核心能力 |
-| --- | --- |
-| IndexTTS 2.0 | 中英音色克隆、情绪控制、参考演绎 |
-| IndexTTS 2.5 | 多语言音色克隆、情绪控制、发音调整 |
-| VoxCPM2 | 文字设计音色、音色克隆、参考原文辅助的精细克隆 |
-| OmniVoice | 属性设计音色、音色克隆、非语言声音标签 |
-| Qwen3-TTS Base · 0.6B / 1.7B | 参考音色克隆、可选原文辅助、多语言生成 |
-| Qwen3-TTS CustomVoice · 1.7B | 9 种内置音色、文字控制风格与情绪 |
-| Qwen3-TTS VoiceDesign · 1.7B | 自然语言描述设计音色，无需参考音频 |
+| 模型 | 参数量 | 模型文件大小（按精度） | 核心能力 |
+| --- | --- | --- | --- |
+| IndexTTS 2.0 | — | Q8 · 3.63 GB<br>F16 · 4.65 GB<br>ORIG · 8.08 GB | 中英音色克隆、情绪控制、参考演绎 |
+| IndexTTS 2.5 | — | Q8 · 3.50 GB<br>F16 · 4.55 GB<br>ORIG · 7.89 GB | 多语言音色克隆、情绪控制、发音调整 |
+| VoxCPM2 | 2B | Q8 · 2.96 GB<br>BF16 · 4.77 GB<br>ORIG · 4.96 GB | 文字设计音色、音色克隆、参考原文辅助的精细克隆 |
+| OmniVoice | 0.6B | Q8 · 1.35 GB<br>BF16 · 1.64 GB<br>F16 · 1.64 GB | 属性设计音色、音色克隆、非语言声音标签 |
+| Qwen3-TTS Base | 0.6B | Q8 · 1.99 GB<br>BF16 · 2.52 GB | 参考音色克隆、可选原文辅助、多语言生成 |
+| Qwen3-TTS Base | 1.7B | Q8 · 2.70 GB<br>BF16 · 4.20 GB<br>ORIG · 4.54 GB | 参考音色克隆、可选原文辅助、多语言生成 |
+| Qwen3-TTS CustomVoice | 1.7B | Q8 · 2.82 GB<br>BF16 · 4.18 GB | 9 种内置音色、文字控制风格与情绪 |
+| Qwen3-TTS VoiceDesign | 1.7B | Q8 · 2.82 GB<br>BF16 · 4.18 GB | 自然语言描述设计音色，无需参考音频 |
+| Kokoro-82M 1.0 Official | 82M | Q8 · 189.55 MB<br>BF16 · 211.95 MB | 49 种内置音色、多语言生成，不含日语 |
+| Kokoro-82M 1.0 | 82M | Q8 · 932.66 MB | 54 种内置音色、包含日语的完整多语言资源；仅支持导入 |
+| Kokoro-82M 1.1-zh | 82M | Q8 · 255.32 MB | 100 种中文音色及 3 种英文音色；实验性，仅支持导入 |
+
 
 App 与 CLI 均支持以上模型，详细精度与参数见[模型能力说明](skills/yovoice/references/models.md)。OmniVoice 权重采用 CC-BY-NC 许可，仅限非商业用途。
 

@@ -25,7 +25,7 @@ yovoice is an open-source voice creation tool for macOS and Windows that turns t
 - **Voice and expression** — use a reference voice, match a reference performance, adjust emotions, or describe the delivery in words.
 - **A complete audio workflow** — import or record reference audio, trim clips, preview speech, and export your work.
 - **Voice design and cloning** — VoxCPM2 offers text-guided voice design, controllable cloning, and transcript-assisted cloning with automatic multilingual handling, and 48 kHz output.
-- **Local models** — run IndexTTS 2.0 / 2.5, VoxCPM2, OmniVoice and Qwen3-TTS through audio.cpp, with resumable model downloads and GGUF import.
+- **Local models** — run IndexTTS 2.0 / 2.5, VoxCPM2, OmniVoice, Qwen3-TTS and Kokoro through audio.cpp, with resumable model downloads and GGUF import.
 - **Hardware acceleration** — Metal on Apple Silicon; CPU, NVIDIA CUDA, and experimental Vulkan on Windows.
 - **Agent Skill** — ask your AI agent to set up local speech generation and create voiceovers from text and reference audio.
 
@@ -33,15 +33,20 @@ yovoice is an open-source voice creation tool for macOS and Windows that turns t
 
 ## Supported Models
 
-| Model | Core capabilities |
-| --- | --- |
-| IndexTTS 2.0 | Chinese/English voice cloning, emotion control, reference performance |
-| IndexTTS 2.5 | Multilingual voice cloning, emotion control, pronunciation editing |
-| VoxCPM2 | Text-guided voice design, voice cloning, transcript-assisted cloning |
-| OmniVoice | Attribute-based voice design, voice cloning, non-verbal sound tags |
-| Qwen3-TTS Base · 0.6B / 1.7B | Reference voice cloning, optional transcript guidance, multilingual speech |
-| Qwen3-TTS CustomVoice · 1.7B | 9 built-in voices, text-guided style and emotion |
-| Qwen3-TTS VoiceDesign · 1.7B | Voice design from natural-language descriptions, no reference audio required |
+| Model | Parameters | Model file size by precision | Core capabilities |
+| --- | --- | --- | --- |
+| IndexTTS 2.0 | — | Q8 · 3.63 GB<br>F16 · 4.65 GB<br>ORIG · 8.08 GB | Chinese/English voice cloning, emotion control, reference performance |
+| IndexTTS 2.5 | — | Q8 · 3.50 GB<br>F16 · 4.55 GB<br>ORIG · 7.89 GB | Multilingual voice cloning, emotion control, pronunciation editing |
+| VoxCPM2 | 2B | Q8 · 2.96 GB<br>BF16 · 4.77 GB<br>ORIG · 4.96 GB | Text-guided voice design, voice cloning, transcript-assisted cloning |
+| OmniVoice | 0.6B | Q8 · 1.35 GB<br>BF16 · 1.64 GB<br>F16 · 1.64 GB | Attribute-based voice design, voice cloning, non-verbal sound tags |
+| Qwen3-TTS Base | 0.6B | Q8 · 1.99 GB<br>BF16 · 2.52 GB | Reference voice cloning, optional transcript guidance, multilingual speech |
+| Qwen3-TTS Base | 1.7B | Q8 · 2.70 GB<br>BF16 · 4.20 GB<br>ORIG · 4.54 GB | Reference voice cloning, optional transcript guidance, multilingual speech |
+| Qwen3-TTS CustomVoice | 1.7B | Q8 · 2.82 GB<br>BF16 · 4.18 GB | 9 built-in voices, text-guided style and emotion |
+| Qwen3-TTS VoiceDesign | 1.7B | Q8 · 2.82 GB<br>BF16 · 4.18 GB | Voice design from natural-language descriptions, no reference audio required |
+| Kokoro-82M 1.0 Official | 82M | Q8 · 189.55 MB<br>BF16 · 211.95 MB | 49 built-in voices, multilingual speech excluding Japanese |
+| Kokoro-82M 1.0 | 82M | Q8 · 932.66 MB | 54 built-in voices, full multilingual resources including Japanese; import only |
+| Kokoro-82M 1.1-zh | 82M | Q8 · 255.32 MB | 100 Chinese and 3 English voices; experimental, import only |
+
 
 All models are available in the App and CLI. See [model capabilities](skills/yovoice/references/models.md) for precisions and parameters. OmniVoice weights use the CC-BY-NC license and are restricted to non-commercial use.
 

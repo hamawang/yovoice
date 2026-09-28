@@ -144,7 +144,7 @@
   .multitrack-content { min-width: max(100%, calc(var(--spacing-8) * 18)); flex-shrink: 0; }
   .multitrack-label { width: var(--audio-label-width); flex-shrink: 0; padding: var(--spacing-0-5) var(--spacing-2); position: sticky; left: 0; background: var(--color-background-surface); z-index: 2; border-right: var(--border-width) solid var(--color-border); }
   .multitrack-ruler-row { height: var(--audio-ruler-height); flex-shrink: 0; align-items: center; }
-  .multitrack-ruler-row .multitrack-label { padding-block: 0; }
+  .multitrack-ruler-row .multitrack-label { padding-block: 0; text-align: center; }
   .multitrack-ruler { position: relative; flex: 1; min-width: 0; align-self: stretch; justify-content: center; }
   .multitrack-ruler small { height: var(--spacing-4); border-left: var(--border-width) solid var(--app-line); padding-left: var(--spacing-1); font-size: var(--font-size-xs); font-variant-numeric: tabular-nums; }
   .multitrack-scroll { background: var(--app-surface); }
