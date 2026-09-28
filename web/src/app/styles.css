@@ -290,8 +290,12 @@
   .voice-row .text-left { min-width: 0; padding-inline: 0; }
   .voice-row small { font-variant-numeric: tabular-nums; }
 
-  .notice { padding: var(--spacing-3) var(--spacing-6); background: var(--color-warning-muted); font-size: var(--app-small-font); flex-shrink: 0; }
-  .activity { padding: var(--spacing-3) var(--spacing-6); background: var(--app-surface); flex-shrink: 0; font-size: var(--app-small-font); }
+  /* 全局反馈脱离布局流，空白区域仍可操作下方工作区。 */
+  .notifications { position: fixed; top: calc(var(--app-titlebar) + var(--spacing-3)); left: 50%; transform: translateX(-50%); z-index: 500; width: max-content; max-width: min(calc(var(--spacing-16) * 8), calc(100vw - var(--spacing-6))); pointer-events: none; }
+  .notifications > * { pointer-events: auto; min-width: 0; max-height: 50dvh; overflow: auto; padding: var(--spacing-2) var(--spacing-3); border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); background: var(--app-white); box-shadow: var(--shadow-med); font-size: var(--app-small-font); overflow-wrap: anywhere; }
+  .notifications .astryx-button { flex-shrink: 0; }
+  .notice-icon { width: var(--spacing-4); height: var(--spacing-4); flex-shrink: 0; color: var(--color-text-red); }
+  .activity { width: calc(var(--spacing-16) * 6); max-width: 100%; }
   progress { width: 100%; height: var(--spacing-1); accent-color: var(--app-ink); }
   .loading { padding: var(--spacing-10); color: var(--app-muted); }
   .recording { color: var(--color-text-red); }
