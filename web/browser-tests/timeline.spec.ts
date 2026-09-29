@@ -105,7 +105,7 @@ test('多轨分割、移动、静音播放、调整高度和重载', async ({ pa
   const ruler = page.getByRole('slider', { name: '播放进度', exact: true });
   await ruler.focus();
   await ruler.press('ArrowRight');
-  await expect(ruler).toHaveValue('0.01');
+  await expect(ruler).toHaveValue('1.01');
   await page.getByRole('slider', { name: '播放进度', exact: true }).fill('0.75');
   await page.getByRole('button', { name: '分割片段', exact: true }).click();
   await expect(page.locator('.multitrack-clip')).toHaveCount(2);

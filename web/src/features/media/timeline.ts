@@ -27,17 +27,21 @@ export class Timeline {
     return { ...value, tracks: value.tracks.map(track => ({ ...track, clips: [...track.clips.filter(c => c.id !== id), ...(track.id === laneId ? [{ ...clip, start }] : [])].sort((a, b) => a.start - b.start) })) };
   }
 
-  // 拖动左边缘时固定右边缘，拖动右边缘时固定左边缘；裁掉的源音频仍可拉回。
-  static trimEdge(value: AudioTimeline, id: string, edge: 'start' | 'end', delta: number, sourceDuration: number): AudioTimeline {
-    const clip = value.tracks.flatMap(track => track.clips).find(c => c.id === id);
-    if (value.tracks.some(t => t.locked && t.clips.some(c => c.id === id))) return value;
-    if (!clip || !Number.isFinite(delta) || !Number.isFinite(sourceDuration) || sourceDuration <= 0) return value;
+  // 磁吸裁剪保持片段起点，同轨后续片段按实际时长差移动；源音频不变。
+  static trimEdge(value: AudioTimeline, id: string, edge: 'start' | 'end', delta: number, sourceDuration: number, ripple = false): AudioTimeline {
+    const lane = value.tracks.find(t => t.clips.some(c => c.id === id));
+    const clip = lane?.clips.find(c => c.id === id);
+    if (!lane || lane.locked || !clip || !Number.isFinite(delta) || !Number.isFinite(sourceDuration) || sourceDuration <= 0) return value;
+    const end = clip.start + clip.duration;
+    const room = 86400 - Math.max(end, ...(ripple ? lane.clips.filter(c => c.start >= end).map(c => c.start + c.duration) : []));
     const shift = edge === 'start'
-      ? Math.max(-Math.min(clip.offset, clip.start), Math.min(delta, clip.duration - 0.01))
-      : Math.max(0.01 - clip.duration, Math.min(delta, sourceDuration - clip.offset - clip.duration, 86400 - clip.start - clip.duration));
-    return { ...value, tracks: value.tracks.map(track => ({ ...track, clips: track.clips.map(c => c.id !== id ? c : {
-      ...c, start: c.start + (edge === 'start' ? shift : 0), offset: c.offset + (edge === 'start' ? shift : 0), duration: c.duration + (edge === 'start' ? -shift : shift),
-    }) })) };
+      ? Math.max(-Math.min(clip.offset, ripple ? room : clip.start), Math.min(delta, clip.duration - 0.01))
+      : Math.max(0.01 - clip.duration, Math.min(delta, sourceDuration - clip.offset - clip.duration, room));
+    if (!shift) return value;
+    const durationDelta = edge === 'start' ? -shift : shift;
+    return { ...value, tracks: value.tracks.map(track => track.id !== lane.id ? track : { ...track, clips: track.clips.map(c => c.id === id ? {
+      ...c, start: c.start + (edge === 'start' && !ripple ? shift : 0), offset: c.offset + (edge === 'start' ? shift : 0), duration: c.duration + durationDelta,
+    } : ripple && c.start >= end ? { ...c, start: c.start + durationDelta } : c) }) };
   }
 
   // 已接收的版本单独记忆，删除片段或重新打开作品不会把它再次插入。

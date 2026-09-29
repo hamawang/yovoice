@@ -132,3 +132,82 @@ test('长故事默认展开并横向滚动，显示全部仅由用户主动触�
   await expect.poll(() => scroll.evaluate(e => e.scrollWidth - e.clientWidth)).toBeLessThan(2);
   expect((await first.boundingBox())!.width).toBeLessThan(30);
 });
+
+test('磁吸裁剪按实际时长带动同轨后续片段，保留间隙及其他轨道', () => {
+  const value: AudioTimeline = { tracks: [
+    { id: 't', name: '对白', muted: false, clips: [
+      { id: 'a', generationId: 'g', start: 0, offset: 1, duration: 2 },
+      { id: 'b', generationId: 'g', start: 2, offset: 0, duration: 2 },
+      { id: 'c', generationId: 'g', start: 5, offset: 0, duration: 2 },
+    ] },
+    { id: 'm', name: '音乐', muted: false, clips: [{ id: 'm', generationId: 'g', start: 0, offset: 0, duration: 8 }] },
+  ] };
+  const cropped = Timeline.trimEdge(value, 'a', 'end', -1, 4, true);
+  expect(cropped.tracks[0].clips.map(c => [c.start, c.duration])).toEqual([[0, 1], [1, 2], [4, 2]]);
+  expect(cropped.tracks[1]).toEqual(value.tracks[1]);
+  expect(Timeline.trimEdge(cropped, 'a', 'end', 1, 4, true)).toEqual(value);
+  expect(Timeline.trimEdge(value, 'a', 'end', 100, 4, true).tracks[0].clips.map(c => c.start)).toEqual([0, 3, 6]);
+  const head = Timeline.trimEdge(value, 'a', 'start', 1, 4, true);
+  expect(head.tracks[0].clips[0]).toMatchObject({ start: 0, offset: 2, duration: 1 });
+  expect(head.tracks[0].clips.map(c => c.start)).toEqual([0, 1, 4]);
+  expect(Timeline.trimEdge(head, 'a', 'start', -1, 4, true)).toEqual(value);
+  expect(Timeline.trimEdge(value, 'a', 'start', -100, 4, true).tracks[0].clips[0]).toMatchObject({ start: 0, offset: 0, duration: 3 });
+  expect(Timeline.trimEdge(value, 'a', 'end', -1, 4, false).tracks[0].clips.map(c => c.start)).toEqual([0, 2, 5]);
+  const limit = { ...value, tracks: [{ ...value.tracks[0], clips: [...value.tracks[0].clips, { id: 'limit', generationId: 'g', start: 86398, offset: 0, duration: 2 }] }] };
+  expect(Timeline.trimEdge(limit, 'a', 'end', 1, 4, true)).toBe(limit);
+  expect(Timeline.trimEdge(limit, 'a', 'start', -1, 4, true)).toBe(limit);
+  const locked = { ...value, tracks: value.tracks.map(t => ({ ...t, locked: true })) };
+  expect(Timeline.trimEdge(locked, 'a', 'end', -1, 4, true)).toBe(locked);
+});
+
+test('点击定位，按压边缘不缩放，默认磁吸裁剪支持撤销及 Alt 自由裁剪', async ({ page }, testInfo) => {
+  await page.goto('/'); const state = emptyState(), draft = state.drafts[0];
+  draft.kind = 'story'; draft.text = '第一句\n第二句';
+  draft.subtitles = { speakers: [{ id: 's', sourceName: '旁白' }], cues: [
+    { id: 'c1', speakerId: 's', text: '第一句', start: 0, end: 2000 },
+    { id: 'c2', speakerId: 's', text: '第二句', start: 2000, end: 4000 },
+  ] };
+  draft.timeline = { acceptedGenerations: ['g', 'g2'], tracks: [{ id: 't', name: '对白', muted: false, clips: [
+    { id: 'a', generationId: 'g', start: 0, offset: 0, duration: 2 },
+    { id: 'b', generationId: 'g2', start: 2, offset: 0, duration: 2 },
+  ] }] };
+  state.history = ['g', 'g2'].map((id, i) => ({ id, title: `台词 ${i + 1}`, fileName: 'g.wav', duration: 2, createdAt: '', settings: draft, segment: { batchId: 't', cueId: `c${i + 1}`, speakerId: 's', speakerName: '旁白', index: i } }));
+  await seedTimeline(page, state);
+  const first = page.locator('[data-clip-id="a"]'), second = page.locator('[data-clip-id="b"]');
+  const progress = page.getByRole('slider', { name: '播放进度', exact: true });
+  const original = (await first.boundingBox())!;
+  await page.mouse.move(original.x + original.width / 2, original.y + original.height / 2); await page.mouse.down();
+  await expect.poll(() => first.locator('.multitrack-clip').evaluate(e => getComputedStyle(e).transform)).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+  expect((await first.locator('.multitrack-clip').boundingBox())!.width).toBeCloseTo(original.width, 1);
+  await page.mouse.up();
+  await expect.poll(async () => Number(await progress.inputValue())).toBeCloseTo(1, 1);
+  await page.locator('[data-cue-index="1"] textarea').click(); await expect(progress).toHaveValue('2');
+  const trim = first.locator('.multitrack-trim[data-edge="end"]');
+  const edge = (await trim.boundingBox())!;
+  const x = edge.x + edge.width - 1, y = edge.y + edge.height / 2;
+  expect(edge.x + edge.width).toBeCloseTo(original.x + original.width, 1);
+  await page.mouse.move(x, y); await page.mouse.down();
+  await expect.poll(() => trim.evaluate(e => getComputedStyle(e).transform)).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+  await page.mouse.move(x - original.width / 2, y, { steps: 5 });
+  await expect(trim).toHaveAttribute('aria-valuenow', '1');
+  expect((await second.boundingBox())!.x).toBeCloseTo(original.x + original.width / 2, 0);
+  await page.screenshot({ path: testInfo.outputPath('magnetic-trim.png') });
+  await page.mouse.up();
+  await page.keyboard.press('Meta+z'); await expect(trim).toHaveAttribute('aria-valuenow', '2');
+  expect((await second.boundingBox())!.x).toBeCloseTo(original.x + original.width, 0);
+  await page.keyboard.press('Meta+Shift+z'); await expect(trim).toHaveAttribute('aria-valuenow', '1');
+  await page.keyboard.press('Meta+z');
+  await page.keyboard.down('Alt'); await page.mouse.move(x, y); await page.mouse.down();
+  await page.mouse.move(x - original.width / 2, y, { steps: 5 }); await page.mouse.up(); await page.keyboard.up('Alt');
+  await expect(trim).toHaveAttribute('aria-valuenow', '1');
+  expect((await second.boundingBox())!.x).toBeCloseTo(original.x + original.width, 0);
+  await page.keyboard.press('Meta+z');
+  await trim.focus(); await trim.press('Shift+ArrowLeft');
+  await expect(trim).toHaveAttribute('aria-valuenow', '1.9');
+  expect((await second.boundingBox())!.x).toBeCloseTo(original.x + original.width * .95, 0);
+  await page.keyboard.press('Meta+z');
+  const lane = (await page.locator('.multitrack-lane').boundingBox())!;
+  await page.mouse.click(lane.x + lane.width * .6, lane.y + lane.height / 2);
+  await expect.poll(async () => Number(await progress.inputValue())).toBeCloseTo(6, 1);
+  await expect(page.locator('.multitrack-region[data-selected="true"]')).toHaveCount(0);
+});

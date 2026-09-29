@@ -44,7 +44,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
   const clipboard = useRef<{ clip: AudioClip; lane: number }[]>([]);
   const scrollRef = useRef<HTMLElement>(null);
   const rulerRef = useRef<HTMLElement>(null);
-  const gesture = useRef<{ x: number; y: number; clientX: number; clientY: number; alt: boolean; scroll: number; vertical: number; moved: boolean; raf: number; apply: (x: number, y: number, alt: boolean) => void } | null>(null);
+  const gesture = useRef<{ x: number; y: number; clientX: number; clientY: number; alt: boolean; scroll: number; vertical: number; moved: boolean; raf: number; clickTime?: number; apply: (x: number, y: number, alt: boolean) => void } | null>(null);
   const gestureNext = useRef<AudioTimeline | null>(null);
   const cueFromClip = useRef<number | undefined>(undefined);
   const suppressClick = useRef(false);
@@ -297,18 +297,21 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
     if (index >= 0) { cueFromClip.current = index; selectCue(index); }
   };
   const finishGesture = (commit: boolean) => {
-    if (gesture.current) { cancelAnimationFrame(gesture.current.raf); suppressClick.current = gesture.current.moved; }
+    if (gesture.current) {
+      cancelAnimationFrame(gesture.current.raf); suppressClick.current = gesture.current.moved;
+      if (commit && !gesture.current.moved && gesture.current.clickTime !== undefined) { seek(gesture.current.clickTime); setRange(undefined); }
+    }
     gesture.current = null; setTrimPreview(null); setGuide(undefined);
     const next = gestureNext.current; gestureNext.current = null;
     if (commit && next) edit(next);
   };
   const preview = (next: AudioTimeline) => { gestureNext.current = next; setTrimPreview(next); };
-  const beginGesture = (event: ReactPointerEvent<HTMLElement>, apply: (x: number, y: number, alt: boolean) => void) => {
+  const beginGesture = (event: ReactPointerEvent<HTMLElement>, apply: (x: number, y: number, alt: boolean) => void, clickTime?: number) => {
     if (event.button !== 0 || historyBlocked) return;
     event.preventDefault(); event.stopPropagation(); stop(); event.currentTarget.focus({ preventScroll: true });
     const scroll = scrollRef.current!; scroll.setPointerCapture(event.pointerId);
     suppressClick.current = false;
-    gesture.current = { x: event.clientX, y: event.clientY, clientX: event.clientX, clientY: event.clientY, alt: event.altKey, scroll: scroll.scrollLeft, vertical: scroll.scrollTop, moved: false, raf: 0, apply };
+    gesture.current = { x: event.clientX, y: event.clientY, clientX: event.clientX, clientY: event.clientY, alt: event.altKey, scroll: scroll.scrollLeft, vertical: scroll.scrollTop, moved: false, raf: 0, clickTime, apply };
     const tick = () => {
       const g = gesture.current; if (!g) return;
       const rect = scroll.getBoundingClientRect();
@@ -329,7 +332,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
     const id = draft.subtitles?.cues[selectedCue]?.id;
     const linked = value.tracks.flatMap(t => t.clips).find(c => history.find(g => g.id === c.generationId)?.segment?.cueId === id);
     if (!linked) { setSelected(''); setSelection([]); return; }
-    setSelected(linked.id); setSelection([linked.id]);
+    setSelected(linked.id); setSelection([linked.id]); seek(linked.start); setRange(undefined);
     const element = scrollRef.current?.querySelector<HTMLElement>(`[data-clip-id="${linked.id}"]`);
     element?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [selectedCue, cueSelectionRevision]);
@@ -459,7 +462,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
               const lane = value.tracks.findIndex(t => t.id === track.id), other = Math.max(0, Math.min(value.tracks.length - 1, lane + Math.round(dy / rowHeight)));
               setSelection(value.tracks.slice(Math.min(lane, other), Math.max(lane, other) + 1).flatMap(t => t.clips.filter(c => c.start < Math.max(start, end) && c.start + c.duration > Math.min(start, end)).map(c => c.id)));
               setRange({ start: Math.max(0, Math.min(start, end)), end: Math.max(start, end) });
-            });
+            }, start);
           }}>
             {track.clips.map(c => <HStack key={c.id} className="multitrack-region" gap={0} data-clip-id={c.id} data-selected={selectedIds.includes(c.id)} style={{ left: `${c.start / scale * 100}%`, width: `${c.duration / scale * 100}%`, opacity: track.muted ? 0.5 : 1 }}>
               <Button size="sm" variant="secondary" className="multitrack-clip" label={audioSources.get(Timeline.sourceKey(c))?.title ?? t('@yovoice.timeline.missing')} aria-pressed={selectedIds.includes(c.id)} icon={<>{history.find(g => g.id === c.generationId)?.segment ? <SpeakerAvatar seed={`${draft.id}:${history.find(g => g.id === c.generationId)!.segment!.speakerId}`} /> : null}{peaks[Timeline.sourceKey(c)] ? <svg className="clip-waveform" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true">{peaks[Timeline.sourceKey(c)].slice(Math.floor(c.offset / buffers.current.get(Timeline.sourceKey(c))!.duration * peaks[Timeline.sourceKey(c)].length), Math.ceil((c.offset + c.duration) / buffers.current.get(Timeline.sourceKey(c))!.duration * peaks[Timeline.sourceKey(c)].length)).map((peak, i, values) => <line key={i} x1={i / values.length * 400} x2={i / values.length * 400} y1={20 - peak * 18} y2={20 + peak * 18} />)}</svg> : null}</>} onPointerDown={e => {
@@ -473,8 +476,8 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
                   const result = snap && !alt ? Timeline.snap(value, ids, picked.flatMap(c => [c.start + delta, c.start + c.duration + delta]), 7 / pps, time) : { delta: 0, guide: undefined };
                   delta += result.delta; setGuide(result.guide);
                   preview(Timeline.moveGroup(value, ids, delta, Math.round(dy / rect.height)));
-                });
-              }} onClick={e => { if (suppressClick.current) { suppressClick.current = false; return; } selectClip(c, e); }} onKeyDown={e => {
+                }, Math.max(c.start, Math.min(c.start + c.duration, (e.clientX - rect.left) / pps)));
+              }} onClick={e => { if (suppressClick.current) { suppressClick.current = false; return; } selectClip(c, e); if (e.detail === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey) { seek(c.start); setRange(undefined); } }} onKeyDown={e => {
                 if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
                 e.preventDefault(); if (!selectedIds.includes(c.id)) selectClip(c);
                 const lane = value.tracks.indexOf(track);
@@ -484,7 +487,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
               }} />
               {(['start', 'end'] as const).map(edge => <Button key={edge} size="sm" variant="ghost" isIconOnly className="multitrack-trim" data-edge={edge}
                 label={t(edge === 'start' ? '@yovoice.timeline.trimStart' : '@yovoice.timeline.trimEnd')} role="slider" aria-orientation="horizontal"
-                aria-valuemin={edge === 'start' ? Math.max(0, c.offset - c.start) : c.offset + 0.01}
+                aria-valuemin={edge === 'start' ? (snap ? 0 : Math.max(0, c.offset - c.start)) : c.offset + 0.01}
                 aria-valuemax={edge === 'start' ? c.offset + c.duration - 0.01 : audioSources.get(Timeline.sourceKey(c))?.duration ?? c.offset + c.duration}
                 aria-valuenow={Number((edge === 'start' ? c.offset : c.offset + c.duration).toFixed(2))}
                 isDisabled={!!track.locked} onPointerDown={e => {
@@ -494,13 +497,13 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
                   beginGesture(e, (dx, _dy, alt) => {
                     const position = c.start + (edge === 'end' ? c.duration : 0) + dx / pps;
                     const result = snap && !alt ? Timeline.snap(value, [c.id], [position], 7 / pps, time) : { delta: 0, guide: undefined };
-                    setGuide(result.guide); preview(Timeline.trimEdge(value, c.id, edge, Math.round((dx / pps + result.delta) * 100) / 100, sourceDuration));
-                  });
+                    setGuide(result.guide); preview(Timeline.trimEdge(value, c.id, edge, Math.round((dx / pps + result.delta) * 100) / 100, sourceDuration, snap && !alt));
+                  }, c.start + (edge === 'end' ? c.duration : 0));
                 }}
                 onKeyDown={e => {
                   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
                   e.preventDefault(); selectClip(c);
-                  edit(Timeline.trimEdge(value, c.id, edge, (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 0.1 : 0.01), audioSources.get(Timeline.sourceKey(c))?.duration ?? 0));
+                  edit(Timeline.trimEdge(value, c.id, edge, (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 0.1 : 0.01), audioSources.get(Timeline.sourceKey(c))?.duration ?? 0, snap && !e.altKey));
                 }} />)}
             </HStack>)}
             {[...track.clips].sort((a, b) => a.start - b.start).map((c, i, clips) => {
