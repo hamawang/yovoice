@@ -11,7 +11,7 @@ let image = CGImageSourceCreateImageAtIndex(source, 0, nil)!
 // 当前素材的底板边界；先去掉不对称留白，再适配 macOS 的图标画布。
 // 更换源图时需要重新校准，不能沿用这组裁切坐标。
 precondition(image.width == 1254 && image.height == 1254, "源图尺寸变化，请重新校准底板边界")
-let artwork = image.cropping(to: CGRect(x: 14, y: 15, width: 1225, height: 1220))!
+let artwork = image.cropping(to: CGRect(x: 27, y: 27, width: 1201, height: 1200))!
 let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
 let iconset = temporary.appendingPathComponent("AppIcon.iconset")
 try FileManager.default.createDirectory(at: iconset, withIntermediateDirectories: true)
