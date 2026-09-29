@@ -115,7 +115,7 @@
   .document-title:focus-visible { outline: var(--border-width) solid var(--app-wave); outline-offset: 0; }
   .script-editor { flex: 1; width: 100%; resize: none; min-height: 0; padding: calc(var(--spacing-6) + var(--spacing-5) - var(--app-editor-font) * .95) 0 var(--spacing-6); font-size: var(--app-editor-font); line-height: 1.9; font-weight: 400; border: none; outline: none; background: transparent; }
   .script-editor:focus-visible { box-shadow: inset 0 -1px var(--app-line); }
-  .subtitle-editor { flex: 1; min-height: 0; overflow-y: auto; padding-top: calc(var(--spacing-6) + var(--spacing-5) - var(--app-editor-font) * .95); padding-bottom: var(--spacing-2); }
+  .subtitle-editor { padding-inline-end: var(--spacing-2); flex: 1; min-height: 0; overflow-y: auto; padding-top: calc(var(--spacing-6) + var(--spacing-5) - var(--app-editor-font) * .95); padding-bottom: var(--spacing-2); }
   .subtitle-speaker-row { padding-block: var(--spacing-2); }
   .subtitle-speaker-row > .astryx-field, .subtitle-speaker-row > .astryx-stack { min-width: 0; }
   .subtitle-speaker-name { flex: 0 0 calc(var(--spacing-8) * 3); }
