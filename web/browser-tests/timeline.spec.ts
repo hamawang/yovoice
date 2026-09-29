@@ -2,6 +2,17 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
 import { emptyState, type AudioTimeline } from '../src/shared/workbench';
 import { Timeline, TimelineHistory } from '../src/features/media/timeline';
 
+async function expectPlaybackHitArea(page: Page) {
+  const play = page.locator('.audio-panel .play-main');
+  // 播放按钮的上半部也应命中按钮，不能被调高面板的透明区域拦截。
+  expect(await play.evaluate(button => {
+    const rect = button.getBoundingClientRect();
+    return [0.2, 0.5, 0.8].every(y => button.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height * y)));
+  })).toBe(true);
+  const handle = await page.getByRole('separator', { name: '调整音轨区高度', exact: true }).boundingBox();
+  expect(handle!.width).toBeLessThanOrEqual(48);
+}
+
 async function dragEdge(page: Page, clip: Locator, edge: 'start' | 'end', delta: number, duration: number) {
   await clip.click();
   const region = clip.locator('..');
@@ -86,6 +97,7 @@ test('多轨分割、移动、静音播放、调整高度和重载', async ({ pa
   const settingsBox = (await page.getByTestId('nav-settings').boundingBox())!;
   expect(Math.abs(settingsBox.y + settingsBox.height - playerBefore!.y - playerBefore!.height)).toBeLessThan(1);
   expect((await page.locator('.player > .transport').boundingBox())!.height).toBeLessThanOrEqual(37);
+  await expectPlaybackHitArea(page);
   const playerHandle = await page.getByRole('separator', { name: '调整音轨区高度', exact: true }).boundingBox();
   await page.mouse.move(playerHandle!.x + playerHandle!.width / 2, playerHandle!.y + playerHandle!.height / 2);
   await page.mouse.down(); await page.mouse.move(playerHandle!.x + playerHandle!.width / 2, playerHandle!.y - 60, { steps: 5 }); await page.mouse.up();
@@ -93,6 +105,7 @@ test('多轨分割、移动、静音播放、调整高度和重载', async ({ pa
   await expect(page.locator('.player-lane-actions').getByRole('button', { name: '新增音轨', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '新增音轨', exact: true }).click();
   await expect(page.locator('.multitrack-row')).toHaveCount(2);
+  await expectPlaybackHitArea(page);
   const addTrackBox = (await page.getByRole('button', { name: '新增音轨', exact: true }).boundingBox())!;
   const laneBox = (await page.locator('.multitrack-lane').first().boundingBox())!;
   expect(addTrackBox.x + addTrackBox.width).toBeLessThanOrEqual(laneBox.x);
