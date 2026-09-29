@@ -418,8 +418,10 @@
 .cue-audio-status[data-status="failed"] { background: var(--color-text-red); }
 .cue-audio-status[data-status="stale"] { background: var(--color-text-orange); }
 
-.multitrack-trim.astryx-button { top: 50%; height: 50%; overflow: hidden; border: none; background: transparent; }
-.multitrack-trim::before { content: ''; width: var(--spacing-0-5); height: var(--spacing-3); border-radius: var(--radius-full); background: var(--app-wave); }
+.multitrack-trim.astryx-button { overflow: hidden; border: none; background: transparent; }
+.multitrack-trim::before { content: ''; position: absolute; inset-block: 0; width: var(--spacing-0-5); background: var(--app-wave); }
+.multitrack-trim[data-edge="start"]::before { left: 0; }
+.multitrack-trim[data-edge="end"]::before { right: 0; }
 
 .multitrack-clip { padding-inline: min(var(--spacing-2), 10%); }
 .timeline-gap { position: absolute; top: var(--spacing-3); width: var(--spacing-2); min-width: 0; padding: 0; height: var(--spacing-6); transform: translateX(-50%); opacity: 0; cursor: ew-resize; overflow: hidden; }

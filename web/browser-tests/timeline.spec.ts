@@ -9,7 +9,11 @@ async function dragEdge(page: Page, clip: Locator, edge: 'start' | 'end', delta:
   await handle.scrollIntoViewIfNeeded();
   const bounds = (await clip.boundingBox())!;
   const grip = (await handle.boundingBox())!;
-  const x = grip.x + grip.width / 2, y = grip.y + grip.height / 2;
+  // 两端整条边缘都可裁剪，分别从上半部和下半部验证命中区域。
+  expect(grip.y).toBeCloseTo(bounds.y, 1);
+  expect(grip.height).toBeCloseTo(bounds.height, 1);
+  const x = edge === 'start' ? grip.x + 1 : grip.x + grip.width - 1;
+  const y = grip.y + grip.height * (edge === 'start' ? .25 : .75);
   await page.keyboard.down('Alt');
   await page.mouse.move(x, y); await page.mouse.down();
   await page.mouse.move(x + delta * bounds.width / duration, y, { steps: 5 }); await page.mouse.up(); await page.keyboard.up('Alt');
