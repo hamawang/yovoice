@@ -133,3 +133,15 @@ Frontend dependencies flow from `app` to `features` to `shared`. Native hosts ca
 - `features/create/studio.tsx` 统一创作与角色编辑的正文、标题及侧栏布局；`shared-controls.tsx` 负责参考声音、高级设置和随机种子。
 - `features/media/playback-toolbar.tsx` 统一播放工具栏与缩放；单音频播放和多轨调度各自保留在原组件。
 - `app/styles.css` 的基础控件区集中管理公共外观，尺寸通过 `size` 与 `--size-element-*` 令牌选择；业务区域不追加基础控件尺寸覆盖。下拉框统一由 `shared/selector.tsx` 设置向下展开（视口不足时由组件翻转避让），业务页面不覆盖方向；缺少 Popover 或 CSS 锚点定位能力的 macOS、Windows 使用原生选择框，菜单位置由系统决定。
+
+## Changelog and releases
+
+Record user-visible changes under `Unreleased` in [CHANGELOG.md](../CHANGELOG.md). Before tagging a release:
+
+1. Consolidate related entries into concise features, improvements, and fixes. Remove implementation details and superseded changes.
+2. Move those entries under `## [X.Y.Z] - YYYY-MM-DD`, leaving `Unreleased` for future work. Update the application version and commit the release changes together.
+3. Preview the exact Release body with `python3 scripts/release-notes.py vX.Y.Z` before pushing the tag.
+
+Publish Release reads the changelog from the tagged source, rejects missing, duplicate, or empty version sections before building, and uses that section as the GitHub Release body alongside the installers and checksums. Draft retries update the same body. Summarization is editorial work done before tagging; CI extracts the reviewed text without rewriting it.
+
+Run `python3 scripts/test-release-notes.py` to check extraction. Historical entries through v0.1.4 were reconstructed from published releases and tagged commits; this does not modify existing GitHub Releases.

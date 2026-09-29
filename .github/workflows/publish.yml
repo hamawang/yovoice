@@ -25,6 +25,13 @@ jobs:
         run: |
           if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then echo '无效的版本标签' >&2; exit 1; fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ steps.version.outputs.tag }}
+      - name: Validate changelog before building
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: python3 scripts/release-notes.py "$TAG" > /dev/null
   build-app:
     needs: version
     uses: ./.github/workflows/check.yml
@@ -38,6 +45,13 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ needs.version.outputs.tag }}
+      - name: Extract release notes
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+        run: python3 scripts/release-notes.py "$TAG" > release_notes.md
       - uses: actions/download-artifact@v4
         with:
           pattern: yovoice-*
@@ -67,9 +81,9 @@ jobs:
           if gh release view "$TAG" --json isDraft --jq '.isDraft' > draft.txt 2>/dev/null; then
             if [[ "$(cat draft.txt)" != true ]]; then echo '该版本已发布，请使用新标签。' >&2; exit 1; fi
           else
-            gh release create "$TAG" --verify-tag --draft --title "$TAG" --generate-notes
+            gh release create "$TAG" --verify-tag --draft --title "$TAG" --notes-file release_notes.md
           fi
           gh release upload "$TAG" release/* --clobber
           prerelease=false
           if [[ "$TAG" == *-* ]]; then prerelease=true; fi
-          gh release edit "$TAG" --draft=false --prerelease="$prerelease"
+          gh release edit "$TAG" --draft=false --prerelease="$prerelease" --notes-file release_notes.md
