@@ -1835,9 +1835,6 @@
   "@yovoice.timeline.regenerate": {
     "defaultMessage": "重新生成片段"
   },
-  "@yovoice.timeline.regenerateHint": {
-    "defaultMessage": "重新生成片段（重置裁剪，后续片段顺延）"
-  },
   "@yovoice.timeline.export": {
     "defaultMessage": "导出音轨"
   },

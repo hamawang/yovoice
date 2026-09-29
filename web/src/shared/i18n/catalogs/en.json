@@ -1835,9 +1835,6 @@
   "@yovoice.timeline.regenerate": {
     "defaultMessage": "Regenerate clip"
   },
-  "@yovoice.timeline.regenerateHint": {
-    "defaultMessage": "Regenerate clip (resets trim and shifts following clips)"
-  },
   "@yovoice.timeline.export": {
     "defaultMessage": "Export timeline"
   },
