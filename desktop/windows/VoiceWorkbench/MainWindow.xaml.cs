@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private readonly Forms.NotifyIcon tray;
     private readonly Forms.ContextMenuStrip trayMenu;
     private readonly System.Drawing.Icon trayIcon;
+    private string WindowPlacementPath => Path.Combine(service.Root, "window-placement.json");
     public MainWindow()
     {
         InitializeComponent();
@@ -49,6 +50,7 @@ public partial class MainWindow : Window
         {
             if (shutdownComplete) return;
             e.Cancel = true;
+            WindowPlacement.Capture(new WindowInteropHelper(this).Handle).Save(WindowPlacementPath);
             // 普通关闭只隐藏窗口；显式退出和更新安装才进入保存、停止服务流程。
             if (!exitRequested && !updater.InstallRequested) { Hide(); return; }
             exitRequested = false;
@@ -79,8 +81,13 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        // 与 Nexus 一样交由 DWM 绘制系统圆角和窗口效果，避免自定义标题栏变成无边框平面。
         var handle = new WindowInteropHelper(this).Handle;
+        // HWND 已确定所在屏幕；使用原生坐标恢复，避免居中逻辑覆盖保存的位置。
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        MinWidth = MinHeight = 0;
+        if (WindowPlacement.Load(WindowPlacementPath) is { } placement) placement.Apply(handle);
+        FitWindowToScreen();
+        // 交由 DWM 绘制系统圆角和窗口效果。
         const int windowCornerPreference = 33, systemBackdropType = 38;
         int roundCorners = 2, mainWindowBackdrop = 2;
         _ = DwmSetWindowAttribute(handle, windowCornerPreference, ref roundCorners, sizeof(int));
@@ -91,9 +98,24 @@ public partial class MainWindow : Window
     private void RestoreWindow()
     {
         Show();
-        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        FitWindowToScreen();
         Activate();
     }
+    private void FitWindowToScreen()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        var screen = Forms.Screen.FromHandle(handle);
+        var area = screen.WorkingArea;
+        double scale = GetDpiForWindow(handle) / 96.0;
+        MinWidth = Math.Min(840, area.Width / scale);
+        MinHeight = Math.Min(640, area.Height / scale);
+        var placement = WindowPlacement.Capture(handle);
+        // 工作区坐标扣除了屏幕顶部、左侧任务栏的偏移。
+        placement.Fit(screen.Bounds.Left, screen.Bounds.Top, area.Width, area.Height);
+        placement.Apply(handle);
+    }
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr handle);
     public void RequestExit()
     {
         if (shuttingDown) return;
