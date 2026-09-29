@@ -11,6 +11,10 @@ async function expectPlaybackHitArea(page: Page) {
   })).toBe(true);
   const handle = await page.getByRole('separator', { name: '调整音轨区高度', exact: true }).boundingBox();
   expect(handle!.width).toBeLessThanOrEqual(48);
+  const panel = (await page.locator('.audio-panel').boundingBox())!;
+  const pill = (await page.locator('.audio-panel .astryx-resize-handle-pill').boundingBox())!;
+  expect(panel.y - pill.y - pill.height).toBeGreaterThanOrEqual(0);
+  expect(panel.y - pill.y - pill.height).toBeLessThanOrEqual(3);
 }
 
 async function dragEdge(page: Page, clip: Locator, edge: 'start' | 'end', delta: number, duration: number) {

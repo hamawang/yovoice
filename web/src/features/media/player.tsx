@@ -113,7 +113,7 @@ export function Player({ track, onError, suspended, compact = false, historyCont
     <Button label={volume === 0 ? t('@yovoice.player.unmute') : t('@yovoice.player.mute')} isIconOnly icon={volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />} size="sm" variant="ghost" onClick={() => { const next = volume === 0 ? 1 : 0; setVolume(next); if (audio.current) audio.current.volume = next; }} />
   </HStack>;
   return <VStack as="footer" className="player audio-panel" gap={0} style={{ height: panel.size }}>
-    <ResizeHandle label={t('@yovoice.timeline.resize')} direction="vertical" isReversed resizable={panel.props} />
+    <ResizeHandle label={t('@yovoice.timeline.resize')} direction="vertical" pillPlacement="center" isReversed resizable={panel.props} />
     {media}
     <PlaybackToolbar time={time} duration={duration} playing={playing} disabled={!url || suspended} toggle={() => void toggle()}
       beforePlay={<Button label={t('@yovoice.player.skipStart')} isIconOnly icon={<SkipBack size={16} />} size="sm" variant="ghost" isDisabled={!url} onClick={() => seek(0)} />}

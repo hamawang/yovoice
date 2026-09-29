@@ -136,8 +136,9 @@
   .writing.writing-timeline { min-height: 0; overflow: hidden; }
   .writing-timeline .script-editor { min-height: 0; }
   .writing.writing-subtitles { min-height: 0; overflow: hidden; }
-  .audio-panel { --audio-label-width: calc(var(--spacing-8) * 3 + var(--spacing-4)); --audio-ruler-height: var(--spacing-5); --audio-row-height: var(--spacing-12); max-height: 60vh; min-height: 0; flex-shrink: 0; margin: var(--spacing-2) var(--spacing-3) var(--spacing-3); padding: 0; border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); background: var(--app-white); overflow: hidden; }
-  .audio-panel > .astryx-resize-handle { width: var(--spacing-12); align-self: center; }
+  .audio-panel { --audio-label-width: calc(var(--spacing-8) * 3 + var(--spacing-4)); --audio-ruler-height: var(--spacing-5); --audio-row-height: var(--spacing-12); max-height: 60vh; min-height: 0; flex-shrink: 0; margin: var(--spacing-2) var(--spacing-3) var(--spacing-3); padding: 0; border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); background: var(--app-white); overflow: visible; }
+  .audio-panel > .astryx-resize-handle { width: var(--spacing-12); align-self: center; top: calc(-1 * var(--spacing-1)); z-index: 2; }
+  .audio-panel .multitrack-scroll, .audio-panel > .timeline { border-radius: 0 0 var(--radius-container) var(--radius-container); }
   .multitrack-scroll { flex: 1; min-height: 0; overflow: auto; }
   .multitrack-content { min-width: max(100%, calc(var(--spacing-8) * 18)); flex-shrink: 0; }
   .multitrack-label { width: var(--audio-label-width); flex-shrink: 0; padding: var(--spacing-0-5) var(--spacing-2); position: sticky; left: 0; background: var(--color-background-surface); z-index: 2; border-right: var(--border-width) solid var(--color-border); }
