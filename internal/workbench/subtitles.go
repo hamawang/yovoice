@@ -94,10 +94,7 @@ func (w *Workbench) prepareSynthesis(d Draft, state State) ([]synthesisPart, err
 					name = speaker.SourceName
 				}
 			}
-			part.segment = &GenerationSegment{CueID: cue.ID, SpeakerID: cue.SpeakerID, SpeakerName: name, Index: index}
-			if d.Timeline != nil {
-				part.segment.Placement = d.Timeline.RegenerateMode
-			}
+			part.segment = &GenerationSegment{CueID: cue.ID, SpeakerID: cue.SpeakerID, SpeakerName: name, Index: index, Placement: "ripple"}
 		}
 		if draft.RequiresVoice() {
 			part.voice, err = w.MediaFile("voices", value(draft.VoiceID))

@@ -1973,24 +1973,6 @@
   "@yovoice.timeline.trackSettings": {
     "defaultMessage": "{name} 设置"
   },
-  "@yovoice.timeline.options": {
-    "defaultMessage": "音轨选项"
-  },
-  "@yovoice.timeline.marker": {
-    "defaultMessage": "场景标记"
-  },
-  "@yovoice.timeline.markerName": {
-    "defaultMessage": "场景名称"
-  },
-  "@yovoice.timeline.regeneratePlacement": {
-    "defaultMessage": "重新生成后"
-  },
-  "@yovoice.timeline.ripple": {
-    "defaultMessage": "顺延当前音轨"
-  },
-  "@yovoice.timeline.preserve": {
-    "defaultMessage": "保持片段位置"
-  },
   "@yovoice.timeline.gap": {
     "defaultMessage": "停顿"
   },

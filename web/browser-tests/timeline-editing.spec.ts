@@ -29,7 +29,7 @@ test('多选保持相对位置，锁轨保护，波纹删除不影响其他轨',
   expect(Timeline.gap(value, 'c', .5).tracks[0].clips.at(-1)?.start).toBe(4.5);
 });
 
-test('对白状态比较文本及角色参数，保位重生成不移动其他片段', () => {
+test('对白状态比较文本及角色参数，旧保位设置下重生成仍自动顺延', () => {
   const draft = emptyState().drafts[0];
   const cue = { id: 'cue', speakerId: 's', text: '台词', start: 0, end: 1000 };
   draft.subtitles = { cues: [cue], speakers: [{ id: 's', sourceName: '旁白' }] };
@@ -38,8 +38,8 @@ test('对白状态比较文本及角色参数，保位重生成不移动其他�
   expect(cueAudioStatus(draft, [g], cue)).toBe('ready');
   expect(cueAudioStatus(draft, [g], { ...cue, text: '已改' })).toBe('stale');
   expect(cueAudioStatus({ ...draft, timeline: { tracks: [] } }, [g], cue)).toBe('missing');
-  const updated = Timeline.accept(draft, [{ ...g, id: 'new', duration: 3, segment: { ...g.segment, targetClipId: 'c' } }]);
-  expect(updated.timeline!.tracks[0].clips.map(c => c.start)).toEqual([0, 1]);
+  const updated = Timeline.accept(draft, [{ ...g, id: 'new', duration: 3, segment: { ...g.segment, targetClipId: 'c', placement: 'preserve' } }]);
+  expect(updated.timeline!.tracks[0].clips.map(c => c.start)).toEqual([0, 3]);
 });
 
 test('共同渲染保留音轨音量、独听、压低及范围导出，忽略旧淡化', async ({ page }) => {
@@ -90,9 +90,10 @@ test('菜单、多选快捷键、锁轨与标尺循环选区', async ({ page }, 
   await page.getByRole('button', { name: '循环试听', exact: true }).click();
   await page.getByRole('button', { name: '播放', exact: true }).click(); await expect(page.getByRole('button', { name: '暂停', exact: true })).toBeVisible();
   await page.waitForTimeout(1400); await expect(page.getByRole('button', { name: '暂停', exact: true })).toBeVisible(); await page.getByRole('button', { name: '循环试听', exact: true }).click(); await expect(page.getByRole('button', { name: '播放', exact: true })).toBeVisible({ timeout: 2500 });
-  await page.getByRole('button', { name: '音轨选项', exact: true }).click(); await page.getByRole('button', { name: '场景标记', exact: true }).click();
-  await page.getByRole('textbox', { name: '场景名称', exact: true }).fill('开场'); await page.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(page.getByRole('button', { name: '开场', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '音轨选项', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '场景标记', exact: true })).toHaveCount(0);
+  await page.locator('.multitrack-clip').first().focus(); await page.keyboard.press('m');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('editing.png') });
   await page.getByRole('button', { name: '放大音轨', exact: true }).click();
   const scroll = page.locator('.multitrack-scroll');

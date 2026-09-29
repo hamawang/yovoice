@@ -10,7 +10,7 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { ResizeHandle } from '@astryxdesign/core/Resizable';
 import { useAudioPanel } from './use-audio-panel';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { Upload, History, FileAudio, Plus, Scissors, Trash2, Volume2, VolumeX, RefreshCw, GripVertical, Undo2, Redo2, Magnet, Repeat2, MoreHorizontal, Flag, Lock, Unlock, Headphones, SlidersHorizontal } from 'lucide-react';
+import { Upload, History, FileAudio, Plus, Scissors, Trash2, Volume2, VolumeX, RefreshCw, GripVertical, Undo2, Redo2, Magnet, Repeat2, MoreHorizontal, Lock, Unlock, Headphones, SlidersHorizontal } from 'lucide-react';
 import { AppDialog } from '../../shared/ui/app-dialog';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { SpeakerAvatar } from '../create/subtitles';
@@ -52,9 +52,6 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
   const [exportScope, setExportScope] = useState('all');
   const [preventClipping, setPreventClipping] = useState(true);
   const [peakDb, setPeakDb] = useState<number>();
-  const [markerOpen, setMarkerOpen] = useState(false);
-  const [markerName, setMarkerName] = useState('');
-  const [markerId, setMarkerId] = useState('');
 
   const [edits] = useState(() => new TimelineHistory(value));
   const [, refreshEdits] = useReducer(count => count + 1, 0);
@@ -141,7 +138,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
     if (!edits.record(next, selected)) return;
     stop(); refreshEdits(); change(next);
   };
-  const historyBlocked = suspended || importing || exporting || regenerating || busy || !!historyTrack || exportOpen || markerOpen;
+  const historyBlocked = suspended || importing || exporting || regenerating || busy || !!historyTrack || exportOpen;
   const restoreEdit = (direction: 'undo' | 'redo') => {
     if (historyBlocked || gesture.current) return;
     const snapshot = edits.restore(direction, selected);
@@ -181,7 +178,6 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
       else if (command && key === 'a') { event.preventDefault(); setSelection(value.tracks.flatMap(t => t.clips.map(c => c.id))); setSelected(value.tracks.flatMap(t => t.clips)[0]?.id ?? ''); }
       else if (command && key === 'i') { event.preventDefault(); split(); }
       else if (key === 'delete' || key === 'backspace') { event.preventDefault(); remove(event.shiftKey); }
-      else if (key === 'm') { event.preventDefault(); setMarkerName(''); setMarkerId(''); setMarkerOpen(true); }
       else if (key === 'l' && event.shiftKey) { event.preventDefault(); setRange(selectionRange()); setLoop(!loop); }
       else if (key === 'home') { event.preventDefault(); seek(0); }
       else if (key === 'end') { event.preventDefault(); seek(duration); }
@@ -387,7 +383,6 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
         {!history.some(g => projectKind(draft) === 'text' && !g.segment && g.settings.id === draft.id && g.title.toLocaleLowerCase().includes(historyQuery.trim().toLocaleLowerCase())) ? <p className="muted">{t('@yovoice.timeline.noHistory')}</p> : null}
       </VStack>
     </AppDialog> : null}
-    {markerOpen ? <AppDialog title={t('@yovoice.timeline.marker')} onClose={() => setMarkerOpen(false)} actions={<><Button label={t('@yovoice.action.delete')} isDisabled={!markerId} onClick={() => { edit({ ...value, markers: value.markers?.filter(m => m.id !== markerId) }); setMarkerOpen(false); }} /><Button label={t('@yovoice.action.save')} isDisabled={!markerName.trim()} onClick={() => { edit({ ...value, markers: [...(value.markers ?? []).filter(m => m.id !== markerId), { id: markerId || crypto.randomUUID(), time: value.markers?.find(m => m.id === markerId)?.time ?? time, name: markerName.trim().slice(0, 120) }].sort((a, b) => a.time - b.time) }); setMarkerOpen(false); }} /></>}><TextInput label={t('@yovoice.timeline.markerName')} value={markerName} onChange={setMarkerName} /></AppDialog> : null}
     <ResizeHandle label={t('@yovoice.timeline.resize')} direction="vertical" isReversed resizable={panel.props} />
     <PlaybackToolbar time={time} duration={duration} playing={playing} disabled={!duration || suspended || exporting} loading={loading} toggle={() => void play()}>
       <Button size="sm" variant="ghost" isIconOnly icon={<Undo2 />} label={t('@yovoice.timeline.undo')} tooltip={`${t('@yovoice.timeline.undo')} (⌘/Ctrl+Z)`} aria-keyshortcuts="Meta+Z Control+Z" isDisabled={historyBlocked || !!trimPreview || !edits.canUndo} onClick={() => restoreEdit('undo')} />
@@ -399,11 +394,6 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
       <Button className="timeline-extra timeline-snap-toggle" size="sm" variant={snap ? "secondary" : "ghost"} isIconOnly label={t('@yovoice.timeline.snap')} tooltip={`${t('@yovoice.timeline.snap')} · Alt`} icon={<Magnet />} aria-pressed={snap} onClick={() => setSnap(!snap)} />
       <Button className="timeline-extra" size="sm" variant="ghost" isIconOnly label={t('@yovoice.timeline.loop')} icon={<Repeat2 />} aria-pressed={loop} isDisabled={!range && !selectedIds.length} onClick={() => { if (!range) setRange(selectionRange()); setLoop(!loop); }} />
       <DropdownMenu presentation="popover" placement="above" hasChevron={false} menuWidth="max-content" button={{ size: 'sm', variant: 'ghost', isIconOnly: true, label: t('@yovoice.timeline.more'), icon: <MoreHorizontal />, 'data-timeline-more': 'true' }} items={menuItems} />
-      <Popover placement="above" label={t('@yovoice.timeline.options')} content={<VStack padding={3} gap={3}>
-        <Button size="sm" label={t('@yovoice.timeline.marker')} icon={<Flag />} onClick={() => { setMarkerId(''); setMarkerName(''); setMarkerOpen(true); }} />
-        <Selector label={t('@yovoice.timeline.regeneratePlacement')} value={value.regenerateMode ?? 'ripple'} onChange={mode => edit({ ...value, regenerateMode: mode as 'ripple' | 'preserve' })} options={[{ value: 'ripple', label: t('@yovoice.timeline.ripple') }, { value: 'preserve', label: t('@yovoice.timeline.preserve') }]} />
-        <HStack gap={1}>{[0, 0.2, 0.5, 1].map(seconds => <Button key={seconds} size="sm" label={`${seconds}s`} aria-label={`${t('@yovoice.timeline.gap')} ${seconds}s`} isDisabled={!editable} onClick={() => edit(Timeline.gap(value, selected, seconds))} />)}</HStack>
-      </VStack>}><Button size="sm" variant="ghost" isIconOnly icon={<SlidersHorizontal />} label={t('@yovoice.timeline.options')} /></Popover>
       <TrackZoom value={zoom} change={zoomTo} fit={fitAll} disabled={!duration} min={minZoom} max={32} />
     </PlaybackToolbar>
     {exportOpen ? <AppDialog title={t('@yovoice.timeline.export')} busy={exporting} error={exportError.startsWith('@yovoice.') ? t(exportError) : exportError} onClose={() => setExportOpen(false)} actions={<Button label={t('@yovoice.timeline.exportConfirm')} variant="primary" isLoading={exporting} isDisabled={!exportName.trim()} onClick={async () => {
@@ -439,7 +429,6 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
           }}>
             <HStack gap={0} aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>{Array.from({ length: Math.max(0, tickCount) }, (_, offset) => { const i = firstTick + offset; return <small className="timeline-tick" style={{ left: `${i * tickStep / scale * 100}%` }} key={i}>{Number((i * tickStep).toFixed(2))}s</small>; })}</HStack>
             {range ? <i className="timeline-range" style={{ left: `${range.start / scale * 100}%`, width: `${(range.end - range.start) / scale * 100}%` }} /> : null}
-            {(value.markers ?? []).map(m => <Button key={m.id} className="timeline-marker" style={{ left: `${m.time / scale * 100}%` }} size="sm" isIconOnly variant="ghost" icon={<Flag />} label={m.name} tooltip={m.name} onClick={() => { seek(m.time); const next = (value.markers ?? []).filter(v => v.time > m.time).sort((a, b) => a.time - b.time)[0]; setRange({ start: m.time, end: next?.time ?? Math.max(m.time + 0.01, duration) }); }} onDoubleClick={() => { setMarkerId(m.id); setMarkerName(m.name); setMarkerOpen(true); }} />)}
             <input type="range" aria-label={t('@yovoice.player.progress')} min={0} max={scale} step={0.01} value={Math.min(time, scale)} tabIndex={0} onChange={e => { setRange(undefined); seek(Number(e.target.value)); }} />
           </VStack>
         </HStack>

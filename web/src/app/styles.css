@@ -409,8 +409,6 @@
 .timeline-tick { position: absolute; inset-block-start: 0; white-space: nowrap; border-inline-start: var(--border-width) solid var(--color-border); padding-inline-start: var(--spacing-1); }
 .timeline-range { position: absolute; inset-block: 0; background: var(--color-overlay-hover); opacity: .35; pointer-events: none; }
 .timeline-snap-guide { position: absolute; inset-block: 0; border-inline-start: var(--border-width) solid var(--color-text-primary); pointer-events: none; z-index: 5; }
-.timeline-marker { position: absolute; inset-block-start: 0; transform: translateX(-50%); z-index: 4; min-height: 0 !important; height: var(--spacing-5) !important; padding: 0 !important; }
-.timeline-marker svg { width: var(--spacing-3); height: var(--spacing-3); }
 .multitrack-lane, .multitrack-clip { touch-action: none; }
 .subtitle-cue[data-playing="true"] { background: var(--color-overlay-hover); border-radius: var(--radius-inner); }
 .cue-audio-status { align-self: center; flex-shrink: 0; width: var(--spacing-2); height: var(--spacing-2); border-radius: 50%; background: var(--color-text-secondary); }

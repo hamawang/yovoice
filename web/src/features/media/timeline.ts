@@ -64,7 +64,7 @@ export class Timeline {
         if (lane && clip) {
           if (lane.locked) continue;
           const end = clip.start + clip.duration;
-          const delta = segment.placement === 'preserve' || (!segment.placement && timeline.regenerateMode === 'preserve') ? 0 : g.duration - clip.duration;
+          const delta = g.duration - clip.duration;
           if (lane.clips.some(c => (c.id === clip.id ? c.start + g.duration : c.start + c.duration + (c.start >= end ? delta : 0)) > 86400)) continue;
           lane.clips = lane.clips.map(c => c.id === clip.id ? { ...c, generationId: g.id, assetId: undefined, offset: 0, duration: g.duration } : c.start >= end ? { ...c, start: c.start + delta } : c);
         }
@@ -96,7 +96,7 @@ export class Timeline {
   }
 
   static snap(value: AudioTimeline, ids: string[], edges: number[], threshold: number, cursor: number) {
-    const targets = [0, cursor, ...(value.markers ?? []).map(m => m.time), ...value.tracks.flatMap(t => t.clips.filter(c => !ids.includes(c.id)).flatMap(c => [c.start, c.start + c.duration]))];
+    const targets = [0, cursor, ...value.tracks.flatMap(t => t.clips.filter(c => !ids.includes(c.id)).flatMap(c => [c.start, c.start + c.duration]))];
     let delta = 0, guide: number | undefined, distance = threshold;
     for (const edge of edges) for (const target of targets) {
       if (Math.abs(target - edge) < distance) { delta = target - edge; distance = Math.abs(delta); guide = target; }

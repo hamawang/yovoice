@@ -145,7 +145,7 @@ func TestSubtitleMappingAndGeneration(t *testing.T) {
 	if len(files) != 4 {
 		t.Fatal("失败音频没有清理", files)
 	}
-	// 仅重试指定台词，原工程正文和其他音频不变；保位策略随请求保存。
+	// 仅重试指定台词，原工程正文和其他音频不变；旧保位设置也统一使用顺延。
 	d.Timeline.RegenerateMode = "preserve"
 	before := len(state.History)
 	must(t, w.generateAudio(d, "", "", "", first.Segment.CueID))
@@ -158,7 +158,7 @@ func TestSubtitleMappingAndGeneration(t *testing.T) {
 		t.Fatal("增量生成超时")
 	}
 	state = w.Store.Read()
-	if len(state.History) != before+1 || state.History[0].Segment.TargetClipID != "clip" || state.History[0].Segment.Placement != "preserve" || len(state.Drafts[0].Subtitles.Cues) != 2 {
+	if len(state.History) != before+1 || state.History[0].Segment.TargetClipID != "clip" || state.History[0].Segment.Placement != "ripple" || len(state.Drafts[0].Subtitles.Cues) != 2 {
 		t.Fatal("增量生成丢失来源或改写正文")
 	}
 	ctx, cancel := context.WithCancel(context.Background())

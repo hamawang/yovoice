@@ -1973,24 +1973,6 @@
   "@yovoice.timeline.trackSettings": {
     "defaultMessage": "{name} settings"
   },
-  "@yovoice.timeline.options": {
-    "defaultMessage": "Timeline options"
-  },
-  "@yovoice.timeline.marker": {
-    "defaultMessage": "Scene marker"
-  },
-  "@yovoice.timeline.markerName": {
-    "defaultMessage": "Scene name"
-  },
-  "@yovoice.timeline.regeneratePlacement": {
-    "defaultMessage": "After regeneration"
-  },
-  "@yovoice.timeline.ripple": {
-    "defaultMessage": "Ripple this track"
-  },
-  "@yovoice.timeline.preserve": {
-    "defaultMessage": "Preserve positions"
-  },
   "@yovoice.timeline.gap": {
     "defaultMessage": "Pause"
   },
