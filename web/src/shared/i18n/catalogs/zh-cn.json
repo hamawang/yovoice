@@ -1817,6 +1817,12 @@
   "@yovoice.voice.unsaved": {
     "defaultMessage": "保存参考音频修改？"
   },
+  "@yovoice.timeline.undo": {
+    "defaultMessage": "撤销"
+  },
+  "@yovoice.timeline.redo": {
+    "defaultMessage": "重做"
+  },
   "@yovoice.timeline.trim": {
     "defaultMessage": "截取范围"
   },

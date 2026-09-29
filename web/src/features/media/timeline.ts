@@ -1,4 +1,4 @@
-import { projectKind, type AudioClip, type AudioTimeline, type Draft, type Generation } from '../../shared/workbench';
+import { stableJSON, projectKind, type AudioClip, type AudioTimeline, type Draft, type Generation } from '../../shared/workbench';
 
 // 所有剪辑使用源音频范围，不改写生成文件。
 export class Timeline {
@@ -98,5 +98,38 @@ export class Timeline {
       source.start(clip.start, clip.offset, clip.duration);
     }
     return audio.startRendering();
+  }
+}
+
+interface TimelineSnapshot { value: AudioTimeline; selected: string }
+
+// 只保存工程数据，不复制音频；撤销栈随当前作品的编辑会话释放。
+export class TimelineHistory {
+  private past: TimelineSnapshot[] = [];
+  private future: TimelineSnapshot[] = [];
+
+  constructor(private current: AudioTimeline) {}
+
+  get canUndo() { return this.past.length > 0; }
+  get canRedo() { return this.future.length > 0; }
+
+  record(value: AudioTimeline, selected: string): boolean {
+    if (stableJSON(value) === stableJSON(this.current)) return false;
+    this.past.push({ value: this.current, selected });
+    // 最多保留 100 步，避免长时间编辑持续占用内存。
+    if (this.past.length > 100) this.past.shift();
+    this.future = []; this.current = value;
+    return true;
+  }
+
+  restore(direction: 'undo' | 'redo', selected: string): TimelineSnapshot | undefined {
+    const from = direction === 'undo' ? this.past : this.future;
+    const to = direction === 'undo' ? this.future : this.past;
+    const snapshot = from.pop();
+    if (!snapshot) return;
+    to.push({ value: this.current, selected });
+    // 接收记录只增不减，撤销生成结果后不能被自动接收逻辑再次插入。
+    this.current = { ...snapshot.value, acceptedGenerations: [...new Set([...(this.current.acceptedGenerations ?? []), ...(snapshot.value.acceptedGenerations ?? [])])] };
+    return { value: this.current, selected: snapshot.selected };
   }
 }

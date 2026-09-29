@@ -1,6 +1,6 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import { emptyState, type AudioTimeline } from '../src/shared/workbench';
-import { Timeline } from '../src/features/media/timeline';
+import { Timeline, TimelineHistory } from '../src/features/media/timeline';
 
 async function dragEdge(page: Page, clip: Locator, edge: 'start' | 'end', delta: number, duration: number) {
   await clip.click();
@@ -37,6 +37,24 @@ test('边缘裁剪固定另一端、可恢复源音频并限制在有效范围',
   expect(Timeline.trimEdge(value, 'c', 'end', 100, 8).tracks[0].clips[0]).toMatchObject({ start: 2, offset: 1, duration: 7 });
   expect(Timeline.trimEdge(value, 'c', 'end', -100, 8).tracks[0].clips[0].duration).toBeCloseTo(0.01);
   expect(Timeline.trimEdge(value, 'c', 'start', NaN, 8)).toBe(value);
+});
+
+test('撤销栈忽略无变化、分支清除重做且不重复接收已撤销的生成结果', () => {
+  const initial: AudioTimeline = { tracks: [{ id: 'a', name: 'A', muted: false, clips: [] }] };
+  const edits = new TimelineHistory(initial);
+  expect(edits.record(structuredClone(initial), '')).toBe(false);
+  expect(edits.canUndo).toBe(false);
+  const generated = { ...initial, acceptedGenerations: ['g'], tracks: [{ ...initial.tracks[0], clips: [{ id: 'c', generationId: 'g', start: 0, offset: 0, duration: 2 }] }] };
+  edits.record(generated, '');
+  edits.record(Timeline.trimEdge(generated, 'c', 'end', -1, 2), 'c');
+  expect(edits.restore('undo', 'c')?.value.tracks[0].clips[0].duration).toBe(2);
+  const undone = edits.restore('undo', 'c')!;
+  expect(undone.value.tracks[0].clips).toEqual([]);
+  expect(undone.value.acceptedGenerations).toEqual(['g']);
+  expect(edits.record(structuredClone(undone.value), '')).toBe(false);
+  expect(edits.restore('redo', '')?.value.tracks[0].clips[0].duration).toBe(2);
+  edits.record({ ...generated, tracks: [{ ...generated.tracks[0], muted: true }] }, 'c');
+  expect(edits.canRedo).toBe(false);
 });
 
 test('多轨分割、移动、静音播放、调整高度和重载', async ({ page }, testInfo) => {
@@ -86,10 +104,22 @@ test('多轨分割、移动、静音播放、调整高度和重载', async ({ pa
   await page.getByRole('slider', { name: '播放进度', exact: true }).fill('0.75');
   await page.getByRole('button', { name: '分割片段', exact: true }).click();
   await expect(page.locator('.multitrack-clip')).toHaveCount(2);
+  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await expect(page.locator('.multitrack-clip')).toHaveCount(1);
+  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await expect(page.locator('.multitrack-clip')).toHaveCount(2);
+  await page.keyboard.press('Meta+z');
+  await expect(page.locator('.multitrack-clip')).toHaveCount(1);
+  await page.keyboard.press('Meta+Shift+z');
+  await expect(page.locator('.multitrack-clip')).toHaveCount(2);
   await page.locator('.multitrack-clip').nth(1).click();
   const moving = (await page.locator('.multitrack-clip').nth(1).boundingBox())!;
   const destination = (await page.locator('.multitrack-lane').nth(1).boundingBox())!;
   await page.locator('.multitrack-clip').nth(1).dragTo(page.locator('.multitrack-lane').nth(1), { targetPosition: { x: destination.width / 10 + moving.width / 2, y: destination.height / 2 } });
+  await expect(page.locator('.multitrack-lane').nth(1).locator('.multitrack-clip')).toHaveCount(1);
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('.multitrack-lane').first().locator('.multitrack-clip')).toHaveCount(2);
+  await page.keyboard.press('Control+y');
   await expect(page.locator('.multitrack-lane').nth(1).locator('.multitrack-clip')).toHaveCount(1);
   await page.getByRole('button', { name: '添加音频到音轨 2', exact: true }).click();
   await page.screenshot({ path: testInfo.outputPath('timeline-audio-menu.png'), animations: 'disabled' });
@@ -97,6 +127,10 @@ test('多轨分割、移动、静音播放、调整高度和重载', async ({ pa
   await page.getByRole('dialog').getByRole('button', { name: '片段 B', exact: true }).click();
   await expect(page.locator('.multitrack-clip')).toHaveCount(3);
   await page.getByRole('button', { name: '静音音轨 1', exact: true }).click();
+  await page.keyboard.press('Control+z');
+  await expect(page.getByRole('button', { name: '静音音轨 1', exact: true })).toBeVisible();
+  await page.keyboard.press('Control+Shift+z');
+  await expect(page.getByRole('button', { name: '取消静音音轨 1', exact: true })).toBeVisible();
   await page.getByRole('slider', { name: '播放进度', exact: true }).fill('0');
   await page.evaluate(() => {
     const calls: number[][] = [];
@@ -253,6 +287,33 @@ test('音轨末尾上传独立素材，裁剪后保存重载与导出', async ({
   await expect(page.getByRole('button', { name: '重新生成片段', exact: true })).toBeDisabled();
   await dragEdge(page, clip, 'end', -63.5, 65);
   await dragEdge(page, clip, 'start', 0.5, 1.5);
+  const undo = page.getByRole('button', { name: '撤销', exact: true });
+  const redo = page.getByRole('button', { name: '重做', exact: true });
+  await undo.click();
+  await expect(page.locator('.multitrack-trim[data-edge="start"]')).toHaveAttribute('aria-valuenow', '0');
+  await undo.click();
+  await expect(page.locator('.multitrack-trim[data-edge="end"]')).toHaveAttribute('aria-valuenow', '65');
+  await redo.click(); await redo.click();
+  await expect(page.locator('.multitrack-trim[data-edge="start"]')).toHaveAttribute('aria-valuenow', '0.5');
+  await expect(redo).toBeDisabled();
+  // 正文的原生撤销不能回退音轨。
+  await page.locator('.script-editor').fill('测试撤销');
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('.multitrack-trim[data-edge="start"]')).toHaveAttribute('aria-valuenow', '0.5');
+  await clip.click();
+  await page.getByRole('button', { name: '删除片段', exact: true }).click();
+  await expect(clip).toHaveCount(0);
+  await undo.click(); await expect(clip).toHaveCount(1);
+  await expect(redo).toBeEnabled();
+  // 新编辑清除重做分支，静音与取消静音各为一步。
+  await page.getByRole('button', { name: '静音音轨 1', exact: true }).click();
+  await expect(redo).toBeDisabled();
+  await undo.click();
+  // 弹窗内快捷键不改变音轨。
+  await page.getByRole('button', { name: '导出音轨', exact: true }).click();
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('.multitrack-trim[data-edge="start"]')).toHaveAttribute('aria-valuenow', '0.5');
+  await page.keyboard.press('Escape');
   await expect(page.getByText('已保存', { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.locator('.multitrack-clip')).toHaveText('环境音');
@@ -298,6 +359,10 @@ test('新建作品不预留空版本行，最后一条空音轨可删除并持�
   await expect(page.locator('.audio-panel')).toHaveCSS('height', '148px');
   await remove.click();
   await expect(page.locator('.audio-panel')).toHaveCSS('height', '100px');
+  await expect(page.locator('.multitrack-row')).toHaveCount(0);
+  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await expect(page.locator('.multitrack-row')).toHaveCount(1);
+  await page.getByRole('button', { name: '重做', exact: true }).click();
   await expect(page.locator('.multitrack-row')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('voice-workbench-v1')!)?.drafts[0].timeline?.tracks)).toEqual([]);
   await page.reload();

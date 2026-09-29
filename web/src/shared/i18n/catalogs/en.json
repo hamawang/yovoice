@@ -1817,6 +1817,12 @@
   "@yovoice.voice.unsaved": {
     "defaultMessage": "Save reference audio changes?"
   },
+  "@yovoice.timeline.undo": {
+    "defaultMessage": "Undo"
+  },
+  "@yovoice.timeline.redo": {
+    "defaultMessage": "Redo"
+  },
   "@yovoice.timeline.trim": {
     "defaultMessage": "Trim range"
   },

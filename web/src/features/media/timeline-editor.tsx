@@ -1,19 +1,19 @@
 import { PlaybackToolbar, TrackZoom } from './playback-toolbar';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useReducer } from 'react';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { ResizeHandle } from '@astryxdesign/core/Resizable';
 import { useAudioPanel } from './use-audio-panel';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { Upload, History, FileAudio, Plus, Scissors, Trash2, Volume2, VolumeX, RefreshCw, GripVertical } from 'lucide-react';
+import { Upload, History, FileAudio, Plus, Scissors, Trash2, Volume2, VolumeX, RefreshCw, GripVertical, Undo2, Redo2 } from 'lucide-react';
 import { AppDialog } from '../../shared/ui/app-dialog';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { SpeakerAvatar } from '../create/subtitles';
 import { encodeWav } from '../../shared/lib/sound';
 import { mediaUrl, saveAudio, importTimelineFile } from '../../shared/lib/client';
 import { formatTime, projectKind, type AudioAsset, type AudioClip, type AudioTimeline, type Generation, type Draft } from '../../shared/workbench';
-import { Timeline } from './timeline';
+import { Timeline, TimelineHistory } from './timeline';
 
 export function TimelineEditor({ draft, busy, regenerate, selectCue, value, history, change, suspended, onError }: {
   draft: Draft; busy: boolean; regenerate: (cueId: string, clipId: string) => Promise<void>; selectCue: (index: number) => void;
@@ -29,6 +29,8 @@ export function TimelineEditor({ draft, busy, regenerate, selectCue, value, hist
   const [historyTrack, setHistoryTrack] = useState('');
   const [historyQuery, setHistoryQuery] = useState('');
   const [selected, setSelected] = useState('');
+  const [edits] = useState(() => new TimelineHistory(value));
+  const [, refreshEdits] = useReducer(count => count + 1, 0);
   const [trimPreview, setTrimPreview] = useState<AudioTimeline | null>(null);
   const trimDrag = useRef<{ value: AudioTimeline; next: AudioTimeline; id: string; edge: 'start' | 'end'; sourceDuration: number; x: number; pixelsPerSecond: number; scroll: HTMLElement; scrollLeft: number } | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
@@ -77,7 +79,35 @@ export function TimelineEditor({ draft, busy, regenerate, selectCue, value, hist
   }, []);
   useEffect(() => { if (suspended) stop(); }, [suspended]);
   useEffect(() => { stop(); trimDrag.current = null; setTrimPreview(null); }, [value]);
-  const edit = (next: AudioTimeline) => { stop(); change(next); };
+  useEffect(() => { if (edits.record(value, selected)) refreshEdits(); }, [value]);
+  const edit = (next: AudioTimeline) => {
+    if (!edits.record(next, selected)) return;
+    stop(); refreshEdits(); change(next);
+  };
+  const historyBlocked = suspended || importing || exporting || regenerating || busy || !!historyTrack || exportOpen;
+  const restoreEdit = (direction: 'undo' | 'redo') => {
+    if (historyBlocked || trimDrag.current) return;
+    const snapshot = edits.restore(direction, selected);
+    if (!snapshot) return;
+    stop(); setTrimPreview(null); setSelected(snapshot.selected);
+    setTime(current => Math.min(current, Timeline.duration(snapshot.value)));
+    const restored = snapshot.value.tracks.flatMap(track => track.clips).find(c => c.id === snapshot.selected);
+    if (restored) selectClip(restored);
+    refreshEdits(); change(snapshot.value);
+  };
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (historyBlocked || event.defaultPrevented || event.isComposing || event.altKey || !(event.metaKey || event.ctrlKey)) return;
+      // 正文、参数与弹窗保留各自的原生撤销行为。
+      if ((event.target as Element)?.closest('textarea, input:not([type="range"]), select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="menu"]') || document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
+      const key = event.key.toLowerCase();
+      if (key !== 'z' && !(event.ctrlKey && key === 'y')) return;
+      event.preventDefault();
+      restoreEdit(key === 'y' || event.shiftKey ? 'redo' : 'undo');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
   const load = async (id: string, audio: AudioContext): Promise<AudioBuffer> => {
     const cached = buffers.current.get(id);
     if (cached) return cached;
@@ -199,6 +229,8 @@ export function TimelineEditor({ draft, busy, regenerate, selectCue, value, hist
     </AppDialog> : null}
     <ResizeHandle label={t('@yovoice.timeline.resize')} direction="vertical" isReversed resizable={panel.props} />
     <PlaybackToolbar time={time} duration={duration} playing={playing} disabled={!duration || suspended || exporting} loading={loading} toggle={() => void play()}>
+      <Button size="sm" variant="ghost" isIconOnly icon={<Undo2 />} label={t('@yovoice.timeline.undo')} tooltip={`${t('@yovoice.timeline.undo')} (⌘/Ctrl+Z)`} aria-keyshortcuts="Meta+Z Control+Z" isDisabled={historyBlocked || !!trimPreview || !edits.canUndo} onClick={() => restoreEdit('undo')} />
+      <Button size="sm" variant="ghost" isIconOnly icon={<Redo2 />} label={t('@yovoice.timeline.redo')} tooltip={`${t('@yovoice.timeline.redo')} (⌘/Ctrl+Shift+Z)`} aria-keyshortcuts="Meta+Shift+Z Control+Shift+Z Control+Y" isDisabled={historyBlocked || !!trimPreview || !edits.canRedo} onClick={() => restoreEdit('redo')} />
       <Button size="sm" variant="ghost" isIconOnly tooltip={t('@yovoice.timeline.split')} label={t('@yovoice.timeline.split')} icon={<Scissors />} isDisabled={!clip || time - clip.start < 0.01 || clip.start + clip.duration - time < 0.01} onClick={() => edit(Timeline.split(value, selected, time))} />
       <Button size="sm" variant="ghost" isIconOnly tooltip={t('@yovoice.timeline.removeClip')} label={t('@yovoice.timeline.removeClip')} icon={<Trash2 />} isDisabled={!clip} onClick={() => { edit({ ...value, tracks: value.tracks.map(track => ({ ...track, clips: track.clips.filter(c => c.id !== selected) })) }); setSelected(''); }} />
       <Button size="sm" variant="ghost" isIconOnly icon={<RefreshCw />} label={t('@yovoice.timeline.regenerate')} tooltip={t('@yovoice.timeline.regenerateHint')} isLoading={regenerating} isDisabled={!cue?.text.trim() || busy || exporting} onClick={async () => {
