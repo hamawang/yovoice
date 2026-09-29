@@ -1973,12 +1973,6 @@
   "@yovoice.timeline.trackSettings": {
     "defaultMessage": "{name} settings"
   },
-  "@yovoice.timeline.fadeIn": {
-    "defaultMessage": "Fade in"
-  },
-  "@yovoice.timeline.fadeOut": {
-    "defaultMessage": "Fade out"
-  },
   "@yovoice.timeline.options": {
     "defaultMessage": "Timeline options"
   },

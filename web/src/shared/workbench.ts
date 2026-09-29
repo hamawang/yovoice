@@ -14,7 +14,7 @@ export interface SynthesisSettings {
 export interface SubtitleSpeaker { id: string; sourceName: string; characterId?: string; settings?: SynthesisSettings }
 export interface SubtitleCue { id?: string; start: number; end: number; text: string; speakerId: string }
 export interface SubtitleDocument { speakers: SubtitleSpeaker[]; cues: SubtitleCue[] }
-export interface AudioClip { id: string; generationId?: string; assetId?: string; start: number; offset: number; duration: number; gainDb?: number; fadeIn?: number; fadeOut?: number }
+export interface AudioClip { id: string; generationId?: string; assetId?: string; start: number; offset: number; duration: number; gainDb?: number }
 export interface AudioLane { id: string; name: string; muted: boolean; solo?: boolean; locked?: boolean; gainDb?: number; duckDb?: number; clips: AudioClip[] }
 export interface AudioAsset { id: string; name: string; fileName: string; duration: number }
 export interface AudioMarker { id: string; time: number; name: string }

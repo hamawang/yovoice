@@ -16,8 +16,7 @@ export class Timeline {
       if (track.locked) return [clip];
       const left = time - clip.start;
       if (clip.id !== id || left < 0.01 || clip.duration - left < 0.01) return [clip];
-      // 分割只保留外侧淡化，切口不重复添加淡入淡出。
-      return [{ ...clip, duration: left, fadeOut: 0 }, { ...clip, id: crypto.randomUUID(), start: time, offset: clip.offset + left, duration: clip.duration - left, fadeIn: 0 }];
+      return [{ ...clip, duration: left }, { ...clip, id: crypto.randomUUID(), start: time, offset: clip.offset + left, duration: clip.duration - left }];
     }) })) };
   }
 
@@ -164,17 +163,14 @@ export class Timeline {
       const begin = Math.max(from, clip.start), end = Math.min(to, clip.start + clip.duration);
       if (end <= begin) continue;
       const buffer = buffers.get(Timeline.sourceKey(clip))!;
-      const fadeIn = Math.min(clip.duration, clip.fadeIn ?? 0), fadeOut = Math.min(clip.duration, clip.fadeOut ?? 0);
       const db = (clip.gainDb ?? 0) + (track.gainDb ?? 0);
       const gainAt = (time: number) => {
-        const local = time - clip.start;
-        const fade = Math.min(1, fadeIn ? local / fadeIn : 1, fadeOut ? (clip.duration - local) / fadeOut : 1);
         const duck = track.duckDb ? duckAt(time) : 0;
-        return 10 ** ((db - (track.duckDb ?? 0) * duck) / 20) * Math.max(0, fade);
+        return 10 ** ((db - (track.duckDb ?? 0) * duck) / 20);
       };
       const source = audio.createBufferSource(), gain = audio.createGain();
       source.buffer = buffer; source.connect(gain); gain.connect(audio.destination);
-      // 10ms 采样同时处理交叠的淡化和压低曲线，预览与导出完全一致。
+      // 10ms 采样处理背景压低曲线，预览与导出完全一致。
       const count = Math.max(2, Math.ceil((end - begin) * 100) + 1);
       gain.gain.setValueCurveAtTime(Float32Array.from({ length: count }, (_, i) => gainAt(begin + i / (count - 1) * (end - begin))), when + begin - from, end - begin);
       source.onended = () => { source.disconnect(); gain.disconnect(); };

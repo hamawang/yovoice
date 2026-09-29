@@ -27,8 +27,6 @@ test('多选保持相对位置，锁轨保护，波纹删除不影响其他轨',
   expect(Timeline.split(locked, 'a', 2)).toEqual(locked);
   expect(Timeline.paste(value, [{ clip: value.tracks[0].clips[0], lane: 0 }, { clip: value.tracks[0].clips[1], lane: 0 }], 10, 0).tracks[0].clips.slice(-2).map(c => c.start)).toEqual([10, 11]);
   expect(Timeline.gap(value, 'c', .5).tracks[0].clips.at(-1)?.start).toBe(4.5);
-  const faded = { tracks: [{ ...value.tracks[0], clips: [{ ...value.tracks[0].clips[0], fadeIn: .2, fadeOut: .3 }] }] };
-  expect(Timeline.split(faded, 'a', 2).tracks[0].clips.map(c => [c.fadeIn, c.fadeOut])).toEqual([[.2, 0], [0, .3]]);
 });
 
 test('对白状态比较文本及角色参数，保位重生成不移动其他片段', () => {
@@ -44,7 +42,7 @@ test('对白状态比较文本及角色参数，保位重生成不移动其他�
   expect(updated.timeline!.tracks[0].clips.map(c => c.start)).toEqual([0, 1]);
 });
 
-test('共同渲染链路应用淡化、音量、独听、压低及范围导出', async ({ page }) => {
+test('共同渲染保留音轨音量、独听、压低及范围导出，忽略旧淡化', async ({ page }) => {
   await page.goto('/');
   const result = await page.evaluate(async () => {
     const path = '/src/features/media/timeline.ts'; const { Timeline } = await import(/* @vite-ignore */ path);
@@ -55,8 +53,8 @@ test('共同渲染链路应用淡化、音量、独听、压低及范围导出',
     return { samples: [.5, 1, 1.25, 2, 2.75, 3.5].map(t => mixed.getChannelData(0)[Math.floor(t * 24000)]), duration: selected.duration, selected: [.001, .25, 1, 1.75].map(t => selected.getChannelData(0)[Math.floor(t * 24000)]), peak: Timeline.peak(mixed) };
   });
   const voice = .5 * 10 ** (-6 / 20), music = .5 * 10 ** (-12 / 20);
-  [.5, music, music + voice / 2, music + voice, music + voice / 2, .5].forEach((x, i) => expect(result.samples[i]).toBeCloseTo(x, 3));
-  expect(result.duration).toBe(2); expect(result.selected[0]).toBeLessThan(.001); expect(result.selected[1]).toBeCloseTo(voice / 2, 3); expect(result.selected[2]).toBeCloseTo(voice, 3); expect(result.peak).toBeCloseTo(.5, 3);
+  [.5, music + voice, music + voice, music + voice, music + voice, .5].forEach((x, i) => expect(result.samples[i]).toBeCloseTo(x, 3));
+  expect(result.duration).toBe(2); result.selected.forEach(sample => expect(sample).toBeCloseTo(voice, 3)); expect(result.peak).toBeCloseTo(.5, 3);
 });
 
 test('菜单、多选快捷键、锁轨与标尺循环选区', async ({ page }, testInfo) => {
@@ -68,20 +66,8 @@ test('菜单、多选快捷键、锁轨与标尺循环选区', async ({ page }, 
   d.timeline.acceptedGenerations = ['g', 'g2'];
   await seedTimeline(page, state);
   await page.locator('.multitrack-clip').first().click();
-  const fade = (await page.getByRole('button', { name: '淡入', exact: true }).boundingBox())!;
-  await page.mouse.move(fade.x + fade.width / 2, fade.y + fade.height / 2); await page.mouse.down(); await page.mouse.move(fade.x + 40, fade.y + fade.height / 2, { steps: 5 }); await page.mouse.up();
-  await expect(page.locator('.clip-fade-curve')).toHaveCount(1);
-  const curve = (await page.locator('.clip-fade-curve').boundingBox())!;
-  const clipBody = (await page.locator('.multitrack-clip').first().boundingBox())!;
-  // 淡化区域只覆盖下半部波形，不穿过标题；拖柄保留独立命中范围。
-  expect(curve.y).toBeGreaterThanOrEqual(clipBody.y + clipBody.height / 2 - 1);
-  expect(fade.width).toBeGreaterThanOrEqual(16);
-  await page.locator('.multitrack').screenshot({ path: testInfo.outputPath('clip-controls.png') });
-  await page.keyboard.press('Meta+z'); await expect(page.locator('.clip-fade-curve')).toHaveCount(0);
-  await page.locator('.clip-gain').press('ArrowUp');
-  await expect(page.locator('.clip-gain')).toHaveAttribute('data-value', '1.0 dB');
-  await page.keyboard.press('Meta+z');
-  await expect(page.locator('.clip-gain')).toHaveAttribute('data-value', '0.0 dB');
+  await expect(page.locator('.clip-fade, .clip-fade-curve, .clip-gain')).toHaveCount(0);
+  await expect(page.locator('.multitrack-region').first().getByRole('slider')).toHaveCount(2);
   await page.locator('.multitrack-clip').first().click(); await page.keyboard.press('Escape');
   await expect(page.locator('.multitrack-region[data-selected="true"]')).toHaveCount(0);
   await page.locator('[data-cue-index="0"] textarea').click();
