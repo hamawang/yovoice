@@ -211,3 +211,54 @@ test('点击定位，按压边缘不缩放，默认磁吸裁剪支持撤销及 A
   await expect.poll(async () => Number(await progress.inputValue())).toBeCloseTo(6, 1);
   await expect(page.locator('.multitrack-region[data-selected="true"]')).toHaveCount(0);
 });
+
+test('磁吸移动把后续片段视为整体，前后移动不传递间隙', () => {
+  const value: AudioTimeline = { tracks: [{ id: 't', name: '对白', muted: false, clips: [
+    { id: 'a', start: 0, offset: 0, duration: 2 },
+    { id: 'b', start: 3, offset: 0, duration: 2 },
+    { id: 'c', start: 6, offset: 0, duration: 2 },
+  ] }, { id: 'm', name: '背景', muted: false, clips: [{ id: 'm', start: 0, offset: 0, duration: 10 }] }] };
+  const forward = Timeline.moveGroup(value, ['b'], 1, 0, true);
+  expect(forward.tracks[0].clips.map(c => c.start)).toEqual([0, 4, 7]);
+  expect(forward.tracks[1]).toEqual(value.tracks[1]);
+  expect(Timeline.moveGroup(forward, ['b'], -1, 0, true)).toEqual(value);
+  expect(Timeline.moveGroup(value, ['b'], -100, 0, true).tracks[0].clips.map(c => c.start)).toEqual([0, 2, 5]);
+  expect(Timeline.moveGroup(value, ['b'], 1).tracks[0].clips.map(c => c.start)).toEqual([0, 4, 6]);
+  expect(Timeline.following(value, ['b'])).toEqual(['b', 'c']);
+});
+
+test('磁吸按钮状态清晰，拖动主体时后续片段同步前后移动', async ({ page }) => {
+  await page.goto('/'); const state = emptyState(), draft = state.drafts[0];
+  draft.timeline = { tracks: [{ id: 't', name: '对白', muted: false, clips: [
+    { id: 'a', generationId: 'g', start: 0, offset: 0, duration: 2 },
+    { id: 'b', generationId: 'g', start: 3, offset: 0, duration: 2 },
+    { id: 'c', generationId: 'g', start: 6, offset: 0, duration: 2 },
+  ] }] };
+  state.history = [{ id: 'g', title: '台词', fileName: 'g.wav', duration: 2, createdAt: '', settings: draft }];
+  await seedTimeline(page, state);
+  const magnet = page.getByRole('button', { name: '吸附', exact: true });
+  await expect(magnet).toHaveAttribute('aria-pressed', 'true');
+  const selectedColor = await magnet.evaluate(e => getComputedStyle(e).backgroundColor);
+  await magnet.click(); await expect(magnet).toHaveAttribute('aria-pressed', 'false');
+  expect(await magnet.evaluate(e => getComputedStyle(e).backgroundColor)).not.toBe(selectedColor);
+  await magnet.click();
+  const b = page.locator('[data-clip-id="b"]'), c = page.locator('[data-clip-id="c"]');
+  const before = (await b.boundingBox())!, tail = (await c.boundingBox())!, pps = before.width / 2;
+  const x = before.x + before.width / 2, y = before.y + before.height / 2;
+  await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x + pps, y, { steps: 5 });
+  expect((await b.boundingBox())!.x).toBeCloseTo(before.x + pps, 0);
+  expect((await c.boundingBox())!.x).toBeCloseTo(tail.x + pps, 0);
+  await page.mouse.move(x - pps, y, { steps: 5 });
+  expect((await b.boundingBox())!.x).toBeCloseTo(before.x - pps, 0);
+  expect((await c.boundingBox())!.x).toBeCloseTo(tail.x - pps, 0);
+  await page.mouse.up();
+  await page.keyboard.press('Meta+z');
+  expect((await c.boundingBox())!.x).toBeCloseTo(tail.x, 0);
+  const trim = b.locator('.multitrack-trim[data-edge="end"]');
+  await trim.focus();
+  const grip = (await trim.boundingBox())!;
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2); await page.mouse.down();
+  await expect(trim).toHaveCSS('outline-style', 'none');
+  await expect(trim).toHaveCSS('box-shadow', 'none');
+  await page.mouse.up();
+});

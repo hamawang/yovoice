@@ -165,7 +165,6 @@
   .multitrack-trim[data-edge="start"] { left: 0; }
   .multitrack-trim[data-edge="end"] { right: 0; }
   .multitrack-region:hover .multitrack-trim, .multitrack-region[data-selected="true"] .multitrack-trim, .multitrack-region:focus-within .multitrack-trim { opacity: 1; }
-  .multitrack-trim:focus-visible { outline: var(--border-width) solid var(--color-text-primary); outline-offset: calc(var(--border-width) * -1); }
   .multitrack-playhead { position: absolute; top: 0; bottom: 0; width: var(--border-width); background: var(--color-text-secondary); pointer-events: none; }
   .selection-action { position: fixed; z-index: 20; padding: var(--spacing-1); background: var(--app-white); border: 1px solid var(--app-line); border-radius: var(--radius-container); box-shadow: 0 var(--spacing-2) var(--spacing-6) var(--app-line); }
   .selection-action .astryx-button { padding: var(--spacing-2) var(--spacing-3); gap: var(--spacing-2); }
@@ -436,3 +435,9 @@
   .multitrack .timeline-extra, .multitrack .track-zoom { display: none; }
   .multitrack .transport-time { font-size: var(--font-size-xs); white-space: nowrap; flex-shrink: 0; }
 }
+
+/* 裁剪只保留边缘反馈，键盘焦点以填色显示，避免出现黑色轮廓。 */
+.multitrack-trim.astryx-button { outline: none; box-shadow: none; }
+.multitrack-trim.astryx-button:focus-visible { background: color-mix(in srgb, var(--app-wave) 20%, transparent); }
+.multitrack-trim.astryx-button:active { background: transparent; }
+.timeline-snap-toggle.astryx-button[aria-pressed="true"] { background: color-mix(in srgb, var(--app-wave) 20%, var(--color-background-surface)); color: var(--app-wave); border-color: var(--app-wave); }

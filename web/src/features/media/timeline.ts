@@ -33,7 +33,7 @@ export class Timeline {
     const clip = lane?.clips.find(c => c.id === id);
     if (!lane || lane.locked || !clip || !Number.isFinite(delta) || !Number.isFinite(sourceDuration) || sourceDuration <= 0) return value;
     const end = clip.start + clip.duration;
-    const room = 86400 - Math.max(end, ...(ripple ? lane.clips.filter(c => c.start >= end).map(c => c.start + c.duration) : []));
+    const room = 86400 - Math.max(end, ...(ripple ? lane.clips.filter(c => c.id !== id && c.start >= end - 1e-7).map(c => c.start + c.duration) : []));
     const shift = edge === 'start'
       ? Math.max(-Math.min(clip.offset, ripple ? room : clip.start), Math.min(delta, clip.duration - 0.01))
       : Math.max(0.01 - clip.duration, Math.min(delta, sourceDuration - clip.offset - clip.duration, room));
@@ -41,7 +41,7 @@ export class Timeline {
     const durationDelta = edge === 'start' ? -shift : shift;
     return { ...value, tracks: value.tracks.map(track => track.id !== lane.id ? track : { ...track, clips: track.clips.map(c => c.id === id ? {
       ...c, start: c.start + (edge === 'start' && !ripple ? shift : 0), offset: c.offset + (edge === 'start' ? shift : 0), duration: c.duration + durationDelta,
-    } : ripple && c.start >= end ? { ...c, start: c.start + durationDelta } : c) }) };
+    } : ripple && c.start >= end - 1e-7 ? { ...c, start: c.start + durationDelta } : c) }) };
   }
 
   // 已接收的版本单独记忆，删除片段或重新打开作品不会把它再次插入。
@@ -104,10 +104,25 @@ export class Timeline {
     return { delta, guide };
   }
 
-  static moveGroup(value: AudioTimeline, ids: string[], delta: number, laneDelta = 0): AudioTimeline {
+  // 同轨从最早选中片段起整体移动，内部间隙不逐段转移。
+  static following(value: AudioTimeline, ids: string[]): string[] {
+    return value.tracks.flatMap(track => {
+      const start = Math.min(...track.clips.filter(c => ids.includes(c.id)).map(c => c.start));
+      return track.clips.filter(c => c.start >= start).map(c => c.id);
+    });
+  }
+
+  static moveGroup(value: AudioTimeline, ids: string[], delta: number, laneDelta = 0, ripple = false): AudioTimeline {
+    if (ripple && laneDelta === 0) ids = Timeline.following(value, ids);
     const selected = value.tracks.flatMap((t, lane) => t.clips.filter(c => ids.includes(c.id)).map(c => ({ c, lane })));
     if (!selected.length || !Number.isFinite(delta) || selected.some(({ lane }) => value.tracks[lane].locked || !value.tracks[lane + laneDelta] || value.tracks[lane + laneDelta].locked)) return value;
-    delta = Math.max(-Math.min(...selected.map(({ c }) => c.start)), Math.min(delta, 86400 - Math.max(...selected.map(({ c }) => c.start + c.duration))));
+    const minimum = ripple && laneDelta === 0
+      ? Math.max(...[...new Set(selected.map(v => v.lane))].map(lane => {
+        const previousEnd = Math.max(0, ...value.tracks[lane].clips.filter(c => !ids.includes(c.id)).map(c => c.start + c.duration));
+        return previousEnd - Math.min(...selected.filter(v => v.lane === lane).map(v => v.c.start));
+      }))
+      : -Math.min(...selected.map(({ c }) => c.start));
+    delta = Math.max(minimum, Math.min(delta, 86400 - Math.max(...selected.map(({ c }) => c.start + c.duration))));
     return { ...value, tracks: value.tracks.map((t, lane) => ({ ...t, clips: [...t.clips.filter(c => !ids.includes(c.id)), ...selected.filter(v => v.lane + laneDelta === lane).map(({ c }) => ({ ...c, start: c.start + delta }))].sort((a, b) => a.start - b.start) })) };
   }
 

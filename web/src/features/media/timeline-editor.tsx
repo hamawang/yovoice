@@ -396,7 +396,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
       <Button className="timeline-extra" size="sm" variant="ghost" isIconOnly tooltip={t('@yovoice.timeline.removeClip')} label={t('@yovoice.timeline.removeClip')} icon={<Trash2 />} isDisabled={!editable} onClick={() => remove()} />
       <Button className="timeline-extra" size="sm" variant="ghost" isIconOnly icon={<RefreshCw />} label={t('@yovoice.timeline.regenerate')} tooltip={t('@yovoice.timeline.regenerateHint')} isLoading={regenerating} isDisabled={!editable || !cue?.text.trim() || busy || exporting} onClick={() => void regenerateClip()} />
       <Button size="sm" label={t('@yovoice.timeline.export')} isDisabled={!value.tracks.some(t => !t.muted && t.clips.length) || exporting} onClick={() => { stop(); setExportError(''); setPeakDb(undefined); setExportName(draft.title); setExportScope('all'); setExportOpen(true); }} />
-      <Button className="timeline-extra" size="sm" variant="ghost" isIconOnly label={t('@yovoice.timeline.snap')} tooltip={`${t('@yovoice.timeline.snap')} · Alt`} icon={<Magnet />} aria-pressed={snap} onClick={() => setSnap(!snap)} />
+      <Button className="timeline-extra timeline-snap-toggle" size="sm" variant={snap ? "secondary" : "ghost"} isIconOnly label={t('@yovoice.timeline.snap')} tooltip={`${t('@yovoice.timeline.snap')} · Alt`} icon={<Magnet />} aria-pressed={snap} onClick={() => setSnap(!snap)} />
       <Button className="timeline-extra" size="sm" variant="ghost" isIconOnly label={t('@yovoice.timeline.loop')} icon={<Repeat2 />} aria-pressed={loop} isDisabled={!range && !selectedIds.length} onClick={() => { if (!range) setRange(selectionRange()); setLoop(!loop); }} />
       <DropdownMenu presentation="popover" placement="above" hasChevron={false} menuWidth="max-content" button={{ size: 'sm', variant: 'ghost', isIconOnly: true, label: t('@yovoice.timeline.more'), icon: <MoreHorizontal />, 'data-timeline-more': 'true' }} items={menuItems} />
       <Popover placement="above" label={t('@yovoice.timeline.options')} content={<VStack padding={3} gap={3}>
@@ -472,10 +472,12 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
                 const rect = e.currentTarget.closest('.multitrack-lane')!.getBoundingClientRect(), pps = rect.width / scale;
                 beginGesture(e, (dx, dy, alt) => {
                   let delta = dx / pps;
-                  const picked = value.tracks.flatMap(t => t.clips.filter(c => ids.includes(c.id)));
-                  const result = snap && !alt ? Timeline.snap(value, ids, picked.flatMap(c => [c.start + delta, c.start + c.duration + delta]), 7 / pps, time) : { delta: 0, guide: undefined };
+                  const laneDelta = Math.round(dy / rect.height);
+                  const moving = snap && !alt && laneDelta === 0 ? Timeline.following(value, ids) : ids;
+                  const picked = value.tracks.flatMap(t => t.clips.filter(c => moving.includes(c.id)));
+                  const result = snap && !alt ? Timeline.snap(value, moving, picked.flatMap(c => [c.start + delta, c.start + c.duration + delta]), 7 / pps, time) : { delta: 0, guide: undefined };
                   delta += result.delta; setGuide(result.guide);
-                  preview(Timeline.moveGroup(value, ids, delta, Math.round(dy / rect.height)));
+                  preview(Timeline.moveGroup(value, ids, delta, laneDelta, snap && !alt));
                 }, Math.max(c.start, Math.min(c.start + c.duration, (e.clientX - rect.left) / pps)));
               }} onClick={e => { if (suppressClick.current) { suppressClick.current = false; return; } selectClip(c, e); if (e.detail === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey) { seek(c.start); setRange(undefined); } }} onKeyDown={e => {
                 if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
@@ -483,7 +485,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
                 const lane = value.tracks.indexOf(track);
                 const destination = value.tracks[lane + (e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0)];
                 const delta = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
-                if (destination) edit(Timeline.moveGroup(value, selectedIds.includes(c.id) ? selectedIds : [c.id], delta * (e.shiftKey ? 0.1 : 0.01), value.tracks.indexOf(destination) - lane));
+                if (destination) edit(Timeline.moveGroup(value, selectedIds.includes(c.id) ? selectedIds : [c.id], delta * (e.shiftKey ? 0.1 : 0.01), value.tracks.indexOf(destination) - lane, snap && !e.altKey));
               }} />
               {(['start', 'end'] as const).map(edge => <Button key={edge} size="sm" variant="ghost" isIconOnly className="multitrack-trim" data-edge={edge}
                 label={t(edge === 'start' ? '@yovoice.timeline.trimStart' : '@yovoice.timeline.trimEnd')} role="slider" aria-orientation="horizontal"
@@ -496,7 +498,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
                   selectClip(c); const pps = e.currentTarget.closest('.multitrack-lane')!.getBoundingClientRect().width / scale;
                   beginGesture(e, (dx, _dy, alt) => {
                     const position = c.start + (edge === 'end' ? c.duration : 0) + dx / pps;
-                    const result = snap && !alt ? Timeline.snap(value, [c.id], [position], 7 / pps, time) : { delta: 0, guide: undefined };
+                    const result = snap && !alt ? Timeline.snap(value, Timeline.following(value, [c.id]), [position], 7 / pps, time) : { delta: 0, guide: undefined };
                     setGuide(result.guide); preview(Timeline.trimEdge(value, c.id, edge, Math.round((dx / pps + result.delta) * 100) / 100, sourceDuration, snap && !alt));
                   }, c.start + (edge === 'end' ? c.duration : 0));
                 }}
