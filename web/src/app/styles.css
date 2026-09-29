@@ -165,7 +165,7 @@
   .multitrack-trim[data-edge="start"] { left: 0; }
   .multitrack-trim[data-edge="end"] { right: 0; }
   .multitrack-region:hover .multitrack-trim, .multitrack-region[data-selected="true"] .multitrack-trim, .multitrack-region:focus-within .multitrack-trim { opacity: 1; }
-  .multitrack-playhead { position: absolute; top: 0; bottom: 0; width: var(--border-width); background: var(--color-text-secondary); pointer-events: none; }
+  .multitrack-playhead { position: absolute; top: 0; bottom: 0; width: var(--border-width); background: var(--app-ink); pointer-events: none; z-index: 1; }
   .selection-action { position: fixed; z-index: 20; padding: var(--spacing-1); background: var(--app-white); border: 1px solid var(--app-line); border-radius: var(--radius-container); box-shadow: 0 var(--spacing-2) var(--spacing-6) var(--app-line); }
   .selection-action .astryx-button { padding: var(--spacing-2) var(--spacing-3); gap: var(--spacing-2); }
   .editor-status { padding-block: var(--spacing-2); flex-shrink: 0; }
@@ -223,7 +223,7 @@
   .waveform line { stroke: color-mix(in srgb, var(--app-wave) 45%, var(--app-white)); stroke-width: 1; stroke-linecap: round; }
   .waveform line.played { stroke: var(--app-wave); }
   .playhead { position: absolute; top: calc(-1 * (var(--audio-ruler-height) + var(--spacing-1))); bottom: 0; width: 1px; background: var(--app-ink); pointer-events: none; }
-  .playhead::before { content: ""; position: absolute; top: 0; left: calc(-1 * var(--spacing-1)); width: var(--spacing-2); height: var(--spacing-2); background: var(--app-ink); clip-path: polygon(0 0, 100% 0, 100% 50%, 50% 100%, 0 50%); }
+  .playhead::before, .multitrack-ruler > .multitrack-playhead::before { content: ""; position: absolute; top: 0; left: calc(-1 * var(--spacing-1)); width: var(--spacing-2); height: var(--spacing-2); background: var(--app-ink); clip-path: polygon(0 0, 100% 0, 100% 50%, 50% 100%, 0 50%); }
   .waveform input { position: absolute; inset: 0; width: 100%; margin: 0; opacity: 0; cursor: pointer; }
   .waveform:focus-within { outline: 1px solid var(--app-wave); outline-offset: 1px; }
   .settings-page,.library-page { flex: 1; padding: var(--spacing-5) var(--spacing-10) var(--spacing-10); width: 100%; max-width: calc(var(--spacing-10) * 24); margin-inline: auto; overflow: hidden; min-height: 0; }
