@@ -1925,9 +1925,6 @@
   "@yovoice.timeline.snap": {
     "defaultMessage": "Snap"
   },
-  "@yovoice.timeline.loop": {
-    "defaultMessage": "Loop selection"
-  },
   "@yovoice.timeline.more": {
     "defaultMessage": "Edit menu"
   },

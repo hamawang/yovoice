@@ -10,7 +10,7 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { ResizeHandle } from '@astryxdesign/core/Resizable';
 import { useAudioPanel } from './use-audio-panel';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { Upload, History, FileAudio, Plus, Scissors, Trash2, Volume2, VolumeX, RefreshCw, GripVertical, Undo2, Redo2, Magnet, Repeat2, MoreHorizontal, Lock, Unlock, Headphones, SlidersHorizontal } from 'lucide-react';
+import { Upload, History, FileAudio, Plus, Scissors, Trash2, Volume2, VolumeX, RefreshCw, GripVertical, Undo2, Redo2, Magnet, MoreHorizontal, Lock, Unlock, Headphones, SlidersHorizontal } from 'lucide-react';
 import { AppDialog } from '../../shared/ui/app-dialog';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { SpeakerAvatar } from '../create/subtitles';
@@ -37,9 +37,6 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
   const [snap, setSnap] = useState(true);
   const [guide, setGuide] = useState<number>();
   const [range, setRange] = useState<{ start: number; end: number }>();
-  const [loop, setLoop] = useState(false);
-  const loopRef = useRef(loop);
-  loopRef.current = loop;
   const [activeLane, setActiveLane] = useState(0);
   const clipboard = useRef<{ clip: AudioClip; lane: number }[]>([]);
   const scrollRef = useRef<HTMLElement>(null);
@@ -178,7 +175,6 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
       else if (command && key === 'a') { event.preventDefault(); setSelection(value.tracks.flatMap(t => t.clips.map(c => c.id))); setSelected(value.tracks.flatMap(t => t.clips)[0]?.id ?? ''); }
       else if (command && key === 'i') { event.preventDefault(); split(); }
       else if (key === 'delete' || key === 'backspace') { event.preventDefault(); remove(event.shiftKey); }
-      else if (key === 'l' && event.shiftKey) { event.preventDefault(); setRange(selectionRange()); setLoop(!loop); }
       else if (key === 'home') { event.preventDefault(); seek(0); }
       else if (key === 'end') { event.preventDefault(); seek(duration); }
       else if (key === 'escape') { finishGesture(false); setSelected(''); setSelection([]); setRange(undefined); }
@@ -240,33 +236,22 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
         if (token !== operation.current) return;
       }
       const start = audio.currentTime + 0.05;
-      const launch = (at: number) => {
-        const nodes = Timeline.schedule(audio, value, buffers.current, from, to, at);
-        for (const node of nodes) { const cleanup = node.onended; node.onended = event => { cleanup?.call(node, event); sources.current = sources.current.filter(s => s !== node); }; }
-        sources.current.push(...nodes);
-      };
-      let cycleStart = start, scheduledUntil = start + to - from;
-      launch(cycleStart);
+      const nodes = Timeline.schedule(audio, value, buffers.current, from, to, start);
+      for (const node of nodes) { const cleanup = node.onended; node.onended = event => { cleanup?.call(node, event); sources.current = sources.current.filter(s => s !== node); }; }
+      sources.current.push(...nodes);
       setLoading(false); setPlaying(true);
       const tick = () => {
-        if (loopRef.current && target && to > from) {
-          while (scheduledUntil < audio.currentTime + 0.15) { launch(scheduledUntil); scheduledUntil += to - from; }
-          while (audio.currentTime >= cycleStart + to - from) cycleStart += to - from;
-        }
-        const next = Math.min(to, from + Math.max(0, audio.currentTime - cycleStart));
+        const next = Math.min(to, from + Math.max(0, audio.currentTime - start));
         setTime(next);
         const active = clips.find(c => c.start <= next && c.start + c.duration > next);
         const id = history.find(g => g.id === active?.generationId)?.segment?.cueId;
         playbackCue?.(draft.subtitles?.cues.findIndex(c => c.id === id) ?? -1);
-        if (next >= to) {
-          if (loopRef.current && target && to > from) frame.current = requestAnimationFrame(tick);
-          else { stop(); playbackCue?.(-1); }
-        } else frame.current = requestAnimationFrame(tick);
+        if (next >= to) stop();
+        else frame.current = requestAnimationFrame(tick);
       };
       tick();
     } catch (error) { if (token === operation.current) { stop(); onError((error as Error).message); } }
   };
-  useEffect(() => { if (playing && loop) void play(range ?? selectionRange()); }, [loop]);
   const seek = (next: number) => { stop(); setTime(next); };
   const addTrack = () => edit({ ...value, tracks: [...value.tracks, { id: crypto.randomUUID(), name: t('@yovoice.timeline.track', { n: value.tracks.length + 1 }), muted: false, clips: [] }] });
   const append = (trackId: string, source: { duration: number; generationId?: string; assetId?: string }, asset?: AudioAsset) => {
@@ -350,7 +335,6 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
       { label: t('@yovoice.timeline.audition'), isDisabled: !range && !selectedIds.length, onClick: () => void play(range ?? selectionRange()) },
       { label: t('@yovoice.timeline.contextPlay'), isDisabled: !selectedIds.length, onClick: () => { const r = selectionRange(); if (r) void play({ start: Math.max(0, r.start - 1), end: Math.min(duration, r.end + 1) }); } },
       { label: t('@yovoice.timeline.snap'), onClick: () => setSnap(!snap) },
-      { label: t('@yovoice.timeline.loop'), isDisabled: !range && !selectedIds.length, onClick: () => { if (!range) setRange(selectionRange()); setLoop(!loop); } },
       { label: t('@yovoice.player.zoomFit'), onClick: fitAll },
       { label: t('@yovoice.timeline.fitSelection'), isDisabled: !range && !selectedIds.length, onClick: fitSelection },
       ...(isDesktop ? [{ label: t('@yovoice.timeline.package'), onClick: () => void exportProject().catch(e => onError((e as Error).message)) }] : []),
@@ -392,7 +376,6 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
       <Button className="timeline-extra" size="sm" variant="ghost" isIconOnly icon={<RefreshCw />} label={t('@yovoice.timeline.regenerate')} tooltip={t('@yovoice.timeline.regenerate')} isLoading={regenerating} isDisabled={!editable || !cue?.text.trim() || busy || exporting} onClick={() => void regenerateClip()} />
       <Button size="sm" label={t('@yovoice.timeline.export')} isDisabled={!value.tracks.some(t => !t.muted && t.clips.length) || exporting} onClick={() => { stop(); setExportError(''); setPeakDb(undefined); setExportName(draft.title); setExportScope('all'); setExportOpen(true); }} />
       <Button className="timeline-extra timeline-snap-toggle" size="sm" variant={snap ? "secondary" : "ghost"} isIconOnly label={t('@yovoice.timeline.snap')} tooltip={`${t('@yovoice.timeline.snap')} · Alt`} icon={<Magnet />} aria-pressed={snap} onClick={() => setSnap(!snap)} />
-      <Button className="timeline-extra" size="sm" variant="ghost" isIconOnly label={t('@yovoice.timeline.loop')} icon={<Repeat2 />} aria-pressed={loop} isDisabled={!range && !selectedIds.length} onClick={() => { if (!range) setRange(selectionRange()); setLoop(!loop); }} />
       <DropdownMenu presentation="popover" placement="above" hasChevron={false} menuWidth="max-content" button={{ size: 'sm', variant: 'ghost', isIconOnly: true, label: t('@yovoice.timeline.more'), icon: <MoreHorizontal />, 'data-timeline-more': 'true' }} items={menuItems} />
       <TrackZoom value={zoom} change={zoomTo} fit={fitAll} disabled={!duration} min={minZoom} max={32} />
     </PlaybackToolbar>

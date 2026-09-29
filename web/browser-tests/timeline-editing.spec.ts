@@ -57,7 +57,7 @@ test('共同渲染保留音轨音量、独听、压低及范围导出，忽略�
   expect(result.duration).toBe(2); result.selected.forEach(sample => expect(sample).toBeCloseTo(voice, 3)); expect(result.peak).toBeCloseTo(.5, 3);
 });
 
-test('菜单、多选快捷键、锁轨与标尺循环选区', async ({ page }, testInfo) => {
+test('菜单、多选快捷键、锁轨与标尺选区单次试听', async ({ page }, testInfo) => {
   await page.goto('/'); const state = emptyState(), d = state.drafts[0];
   d.kind = 'story'; d.subtitles = { speakers: [{ id: 's', sourceName: '旁白' }], cues: [{ id: 'c1', speakerId: 's', text: '第一句', start: 0, end: 2000 }, { id: 'c2', speakerId: 's', text: '第二句', start: 3000, end: 5000 }] };
   d.text = '第一句\n第二句';
@@ -87,9 +87,10 @@ test('菜单、多选快捷键、锁轨与标尺循环选区', async ({ page }, 
   const ruler = (await page.locator('.multitrack-ruler').boundingBox())!;
   await page.mouse.move(ruler.x + ruler.width * .05, ruler.y + ruler.height / 2); await page.mouse.down(); await page.mouse.move(ruler.x + ruler.width * .15, ruler.y + ruler.height / 2, { steps: 5 }); await page.mouse.up();
   await expect(page.locator('.multitrack-ruler .timeline-range')).toBeVisible();
-  await page.getByRole('button', { name: '循环试听', exact: true }).click();
+  await expect(page.getByRole('button', { name: '循环试听', exact: true })).toHaveCount(0);
+  await page.locator('.multitrack-clip').first().focus(); await page.keyboard.press('Shift+l');
   await page.getByRole('button', { name: '播放', exact: true }).click(); await expect(page.getByRole('button', { name: '暂停', exact: true })).toBeVisible();
-  await page.waitForTimeout(1400); await expect(page.getByRole('button', { name: '暂停', exact: true })).toBeVisible(); await page.getByRole('button', { name: '循环试听', exact: true }).click(); await expect(page.getByRole('button', { name: '播放', exact: true })).toBeVisible({ timeout: 2500 });
+  await expect(page.getByRole('button', { name: '播放', exact: true })).toBeVisible({ timeout: 2500 });
   await expect(page.getByRole('button', { name: '音轨选项', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '场景标记', exact: true })).toHaveCount(0);
   await page.locator('.multitrack-clip').first().focus(); await page.keyboard.press('m');

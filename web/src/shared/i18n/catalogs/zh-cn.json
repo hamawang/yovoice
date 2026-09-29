@@ -1925,9 +1925,6 @@
   "@yovoice.timeline.snap": {
     "defaultMessage": "吸附"
   },
-  "@yovoice.timeline.loop": {
-    "defaultMessage": "循环试听"
-  },
   "@yovoice.timeline.more": {
     "defaultMessage": "剪辑菜单"
   },
