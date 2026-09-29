@@ -403,3 +403,36 @@
 .project-row:hover .project-quick-delete,.project-row:focus-within .project-quick-delete { opacity: 1; pointer-events: auto; }
 .project-row:hover .project-link,.project-row:focus-within .project-link { padding-inline-end: var(--spacing-10); }
 @media (hover: none) { .project-row .project-quick-delete { opacity: 1; pointer-events: auto; } .project-row .project-link { padding-inline-end: var(--spacing-10); } }
+
+/* 时间轴编辑反馈不占额外布局空间。 */
+.multitrack-ruler { position: relative; touch-action: none; }
+.timeline-tick { position: absolute; inset-block-start: 0; white-space: nowrap; border-inline-start: var(--border-width) solid var(--color-border); padding-inline-start: var(--spacing-1); }
+.timeline-range { position: absolute; inset-block: 0; background: var(--color-overlay-hover); opacity: .35; pointer-events: none; }
+.timeline-snap-guide { position: absolute; inset-block: 0; border-inline-start: var(--border-width) solid var(--color-text-primary); pointer-events: none; z-index: 5; }
+.timeline-marker { position: absolute; inset-block-start: 0; transform: translateX(-50%); z-index: 4; min-height: 0 !important; height: var(--spacing-5) !important; padding: 0 !important; }
+.timeline-marker svg { width: var(--spacing-3); height: var(--spacing-3); }
+.multitrack-lane, .multitrack-clip { touch-action: none; }
+.multitrack-region .clip-gain { position: absolute; inset-inline: var(--spacing-3); height: var(--spacing-2); min-height: 0; padding: 0; border-block-start: var(--border-width) solid var(--color-text-secondary); color: transparent; border-radius: 0; cursor: ns-resize; z-index: 3; }
+.multitrack-region .clip-fade { position: absolute; inset-block-start: 0; height: var(--spacing-2); width: var(--spacing-2); min-height: 0; min-width: 0; padding: 0; border-radius: var(--radius-inner); color: transparent; cursor: ew-resize; z-index: 4; transform: translateX(-50%); }
+.multitrack-region .clip-fade[data-edge="fadeOut"] { transform: translateX(50%); }
+.clip-fade-curve { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.clip-fade-curve polyline { stroke: var(--color-text-secondary); stroke-width: 1; fill: none; vector-effect: non-scaling-stroke; }
+.subtitle-cue[data-playing="true"] { background: var(--color-overlay-hover); border-radius: var(--radius-inner); }
+.cue-audio-status { align-self: center; flex-shrink: 0; width: var(--spacing-2); height: var(--spacing-2); border-radius: 50%; background: var(--color-text-secondary); }
+.cue-audio-status[data-status="failed"] { background: var(--color-text-red); }
+.cue-audio-status[data-status="stale"] { background: var(--color-text-orange); }
+
+.multitrack-trim { overflow: hidden; }
+.multitrack-trim svg { pointer-events: none; }
+
+.multitrack-clip { padding-inline: min(var(--spacing-2), 10%); }
+.timeline-gap { position: absolute; top: var(--spacing-3); width: var(--spacing-2); min-width: 0; padding: 0; height: var(--spacing-6); transform: translateX(-50%); opacity: 0; cursor: ew-resize; overflow: hidden; }
+.multitrack-lane:hover .timeline-gap, .timeline-gap:focus-visible { opacity: .5; }
+.timeline-gap svg { pointer-events: none; }
+.multitrack { container-type: inline-size; }
+@container (max-width: 45rem) {
+  .multitrack .transport { flex-wrap: nowrap; gap: var(--spacing-1); }
+  .multitrack .transport-end { flex-wrap: nowrap; gap: 0; }
+  .multitrack .timeline-extra, .multitrack .track-zoom { display: none; }
+  .multitrack .transport-time { font-size: var(--font-size-xs); white-space: nowrap; flex-shrink: 0; }
+}

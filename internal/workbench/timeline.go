@@ -23,6 +23,19 @@ func validateTimeline(timeline *AudioTimeline, history []Generation) error {
 			return bad
 		}
 	}
+	if timeline.RegenerateMode != "" && timeline.RegenerateMode != "ripple" && timeline.RegenerateMode != "preserve" {
+		return bad
+	}
+	markerIDs := map[string]bool{}
+	if len(timeline.Markers) > 2000 {
+		return bad
+	}
+	for _, marker := range timeline.Markers {
+		if marker.ID == "" || len(marker.ID) > 64 || markerIDs[marker.ID] || !inRange(marker.Time, 0, 86400) || strings.TrimSpace(marker.Name) == "" || textLen(marker.Name) > 120 {
+			return bad
+		}
+		markerIDs[marker.ID] = true
+	}
 	if len(timeline.Tracks) > 32 {
 		return bad
 	}
@@ -43,11 +56,17 @@ func validateTimeline(timeline *AudioTimeline, history []Generation) error {
 	ids := map[string]bool{}
 	count := 0
 	for _, track := range timeline.Tracks {
+		if !inRange(track.GainDB, -60, 12) || !inRange(track.DuckDB, 0, 36) {
+			return bad
+		}
 		if track.ID == "" || len(track.ID) > 64 || ids[track.ID] || strings.TrimSpace(track.Name) == "" || textLen(track.Name) > 120 {
 			return bad
 		}
 		ids[track.ID] = true
 		for _, clip := range track.Clips {
+			if !inRange(clip.GainDB, -60, 12) || !inRange(clip.FadeIn, 0, 3600) || !inRange(clip.FadeOut, 0, 3600) {
+				return bad
+			}
 			count++
 			duration, exists := sources[clip.GenerationID]
 			if clip.AssetID != "" {

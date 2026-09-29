@@ -1900,5 +1900,119 @@
   },
   "@yovoice.project.copyShort": {
     "defaultMessage": "复制"
+  },
+  "@yovoice.timeline.copy": {
+    "defaultMessage": "复制片段"
+  },
+  "@yovoice.timeline.paste": {
+    "defaultMessage": "粘贴片段"
+  },
+  "@yovoice.timeline.duplicate": {
+    "defaultMessage": "复制一份"
+  },
+  "@yovoice.timeline.rippleDelete": {
+    "defaultMessage": "删除并闭合空隙"
+  },
+  "@yovoice.timeline.audition": {
+    "defaultMessage": "试听选区"
+  },
+  "@yovoice.timeline.contextPlay": {
+    "defaultMessage": "连同前后试听"
+  },
+  "@yovoice.timeline.fitSelection": {
+    "defaultMessage": "缩放到选区"
+  },
+  "@yovoice.timeline.balance": {
+    "defaultMessage": "均衡角色音量"
+  },
+  "@yovoice.timeline.snap": {
+    "defaultMessage": "吸附"
+  },
+  "@yovoice.timeline.loop": {
+    "defaultMessage": "循环试听"
+  },
+  "@yovoice.timeline.more": {
+    "defaultMessage": "剪辑菜单"
+  },
+  "@yovoice.timeline.clipping": {
+    "defaultMessage": "峰值超过 0 dBFS。启用防削波，或再次导出保留原音量。"
+  },
+  "@yovoice.timeline.exportScope": {
+    "defaultMessage": "导出范围"
+  },
+  "@yovoice.timeline.all": {
+    "defaultMessage": "全部音轨"
+  },
+  "@yovoice.timeline.range": {
+    "defaultMessage": "所选范围"
+  },
+  "@yovoice.timeline.preventClipping": {
+    "defaultMessage": "防止削波"
+  },
+  "@yovoice.timeline.peak": {
+    "defaultMessage": "峰值"
+  },
+  "@yovoice.timeline.volume": {
+    "defaultMessage": "音量"
+  },
+  "@yovoice.timeline.duck": {
+    "defaultMessage": "对白时降低音量"
+  },
+  "@yovoice.timeline.trackName": {
+    "defaultMessage": "音轨名称"
+  },
+  "@yovoice.timeline.solo": {
+    "defaultMessage": "独听"
+  },
+  "@yovoice.timeline.lock": {
+    "defaultMessage": "锁定音轨"
+  },
+  "@yovoice.timeline.unlock": {
+    "defaultMessage": "解锁音轨"
+  },
+  "@yovoice.timeline.trackSettings": {
+    "defaultMessage": "{name} 设置"
+  },
+  "@yovoice.timeline.fadeIn": {
+    "defaultMessage": "淡入"
+  },
+  "@yovoice.timeline.fadeOut": {
+    "defaultMessage": "淡出"
+  },
+  "@yovoice.timeline.options": {
+    "defaultMessage": "音轨选项"
+  },
+  "@yovoice.timeline.marker": {
+    "defaultMessage": "场景标记"
+  },
+  "@yovoice.timeline.markerName": {
+    "defaultMessage": "场景名称"
+  },
+  "@yovoice.timeline.regeneratePlacement": {
+    "defaultMessage": "重新生成后"
+  },
+  "@yovoice.timeline.ripple": {
+    "defaultMessage": "顺延当前音轨"
+  },
+  "@yovoice.timeline.preserve": {
+    "defaultMessage": "保持片段位置"
+  },
+  "@yovoice.timeline.gap": {
+    "defaultMessage": "停顿"
+  },
+  "@yovoice.timeline.missingCue": {
+    "defaultMessage": "未生成"
+  },
+  "@yovoice.timeline.staleCue": {
+    "defaultMessage": "待更新"
+  },
+  "@yovoice.timeline.failedCue": {
+    "defaultMessage": "生成失败"
+  },
+  "@yovoice.timeline.generatePending": {
+    "defaultMessage": "生成待处理台词"
+  },
+  "@yovoice.timeline.follow": {
+    "defaultMessage": "跟随播放"
   }
 }

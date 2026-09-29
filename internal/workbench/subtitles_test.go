@@ -137,13 +137,29 @@ func TestSubtitleMappingAndGeneration(t *testing.T) {
 		t.Fatal("失败任务没有结束")
 	}
 	state = w.Store.Read()
-	if len(state.History) != 4 || state.History[0].Settings.Text != "你好" || state.Activity.Status != "failed" {
+	if len(state.History) != 4 || state.History[0].Settings.Text != "你好" || state.Activity.Status != "failed" || state.Activity.CueID != d.Subtitles.Cues[1].ID {
 		t.Fatal("后续台词失败时丢失了成功片段", state.Activity)
 	}
 	files, err = filepath.Glob(filepath.Join(w.Store.Root, "outputs", "*.wav"))
 	must(t, err)
 	if len(files) != 4 {
 		t.Fatal("失败音频没有清理", files)
+	}
+	// 仅重试指定台词，原工程正文和其他音频不变；保位策略随请求保存。
+	d.Timeline.RegenerateMode = "preserve"
+	before := len(state.History)
+	must(t, w.generateAudio(d, "", "", "", first.Segment.CueID))
+	w.mu.Lock()
+	done = w.done
+	w.mu.Unlock()
+	select {
+	case <-done:
+	case <-time.After(15 * time.Second):
+		t.Fatal("增量生成超时")
+	}
+	state = w.Store.Read()
+	if len(state.History) != before+1 || state.History[0].Segment.TargetClipID != "clip" || state.History[0].Segment.Placement != "preserve" || len(state.Drafts[0].Subtitles.Cues) != 2 {
+		t.Fatal("增量生成丢失来源或改写正文")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

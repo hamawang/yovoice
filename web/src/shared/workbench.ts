@@ -14,10 +14,11 @@ export interface SynthesisSettings {
 export interface SubtitleSpeaker { id: string; sourceName: string; characterId?: string; settings?: SynthesisSettings }
 export interface SubtitleCue { id?: string; start: number; end: number; text: string; speakerId: string }
 export interface SubtitleDocument { speakers: SubtitleSpeaker[]; cues: SubtitleCue[] }
-export interface AudioClip { id: string; generationId?: string; assetId?: string; start: number; offset: number; duration: number }
-export interface AudioLane { id: string; name: string; muted: boolean; clips: AudioClip[] }
+export interface AudioClip { id: string; generationId?: string; assetId?: string; start: number; offset: number; duration: number; gainDb?: number; fadeIn?: number; fadeOut?: number }
+export interface AudioLane { id: string; name: string; muted: boolean; solo?: boolean; locked?: boolean; gainDb?: number; duckDb?: number; clips: AudioClip[] }
 export interface AudioAsset { id: string; name: string; fileName: string; duration: number }
-export interface AudioTimeline { assets?: AudioAsset[]; acceptedGenerations?: string[]; tracks: AudioLane[] }
+export interface AudioMarker { id: string; time: number; name: string }
+export interface AudioTimeline { markers?: AudioMarker[]; regenerateMode?: 'ripple' | 'preserve'; assets?: AudioAsset[]; acceptedGenerations?: string[]; tracks: AudioLane[] }
 export type ProjectKind = 'text' | 'story' | 'subtitle';
 export interface Draft extends SynthesisSettings { id: string; title: string; text: string; kind?: ProjectKind; characterId?: string; createdAt?: string; updatedAt?: string; subtitles?: SubtitleDocument; timeline?: AudioTimeline }
 // 旧字幕作品沿用原始数据，统一归入故事。
@@ -30,10 +31,17 @@ export const stableJSON = (value: unknown): string => JSON.stringify(value, (_, 
 // 与 Go 的可选字段默认值对齐，保留 seed=0 与自动随机种子的区别。
 const comparableSettings = (settings: SynthesisSettings) => ({ speaker: '', synthesisLanguage: '', omniSpeed: 0, voiceMode: '', voxMode: '', voiceDescription: '', referenceText: '', guidanceScale: 0, inferenceSteps: 0, modelOptions: {}, ...settings });
 export const previewStale = (c: Character) => !!c.preview && (c.demoText !== c.preview.text || stableJSON(comparableSettings(c.settings)) !== stableJSON(comparableSettings(c.preview.settings)));
+export function cueAudioStatus(draft: Draft, history: Generation[], cue: SubtitleCue): 'missing' | 'stale' | 'ready' {
+  const ids = new Set(draft.timeline?.tracks.flatMap(t => t.clips.map(c => c.generationId)) ?? []);
+  const generation = history.find(g => ids.has(g.id) && g.segment?.cueId === cue.id);
+  if (!generation) return 'missing';
+  const speaker = draft.subtitles?.speakers.find(s => s.id === cue.speakerId);
+  return generation.settings.text === cue.text && generation.segment?.speakerId === cue.speakerId && stableJSON(comparableSettings(synthesisSettings(generation.settings))) === stableJSON(comparableSettings(speaker?.settings ?? synthesisSettings(draft))) ? 'ready' : 'stale';
+}
 export interface Voice { referenceText?: string; source?: string; sourceGenerationId?: string; id: string; name: string; fileName: string; duration: number }
 export interface ModelPackage { voices?: string[]; variant?: string; task?: string; family: string; id: string; name: string; version: string; precision: string; remotePath: string; size: number; sha256: string }
 export interface InstalledModel { id: string; path: string; managed: boolean }
-export interface GenerationSegment { cueId: string; speakerId: string; speakerName: string; batchId: string; index: number; targetClipId?: string }
+export interface GenerationSegment { cueId: string; speakerId: string; speakerName: string; batchId: string; index: number; targetClipId?: string; placement?: 'ripple' | 'preserve' }
 export interface Generation { segment?: GenerationSegment; id: string; title: string; fileName: string; createdAt: string; duration: number; settings: Draft }
 /** UI chrome locale. Distinct from Draft.language (TTS). */
 export type UiLocale = 'zh-CN' | 'en';
@@ -41,6 +49,7 @@ export type UiLocale = 'zh-CN' | 'en';
 export type MessageCode = `@yovoice.${string}`;
 export type MessageParams = Record<string, unknown>;
 export interface Activity {
+  cueId?: string;
   projectId?: string;
   characterId?: string;
   requestId?: string;

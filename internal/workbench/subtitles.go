@@ -95,6 +95,9 @@ func (w *Workbench) prepareSynthesis(d Draft, state State) ([]synthesisPart, err
 				}
 			}
 			part.segment = &GenerationSegment{CueID: cue.ID, SpeakerID: cue.SpeakerID, SpeakerName: name, Index: index}
+			if d.Timeline != nil {
+				part.segment.Placement = d.Timeline.RegenerateMode
+			}
 		}
 		if draft.RequiresVoice() {
 			part.voice, err = w.MediaFile("voices", value(draft.VoiceID))
@@ -123,6 +126,13 @@ func (w *Workbench) generateSegments(ctx context.Context, state State, parts []s
 		if err := ctx.Err(); err != nil {
 			return err
 		}
+		if err := w.Store.Update(func(s *State) {
+			if s.Activity != nil {
+				s.Activity.CueID = part.segment.CueID
+			}
+		}, false); err != nil {
+			return err
+		}
 		id := newID()
 		path, err := w.Store.MediaPath("outputs", id+".wav")
 		if err != nil {
@@ -144,7 +154,9 @@ func (w *Workbench) generateSegments(ctx context.Context, state State, parts []s
 			return err
 		}
 		part.segment.BatchID = batch
-		part.segment.TargetClipID = targetClipID
+		if targetClipID != "" {
+			part.segment.TargetClipID = targetClipID
+		}
 		title := []rune(part.draft.Text)
 		if len(title) > 60 {
 			title = title[:60]

@@ -76,6 +76,9 @@ type SubtitleDocument struct {
 	Cues     []SubtitleCue     `json:"cues"`
 }
 type AudioClip struct {
+	GainDB       float64 `json:"gainDb,omitempty"`
+	FadeIn       float64 `json:"fadeIn,omitempty"`
+	FadeOut      float64 `json:"fadeOut,omitempty"`
 	ID           string  `json:"id"`
 	GenerationID string  `json:"generationId,omitempty"`
 	AssetID      string  `json:"assetId,omitempty"`
@@ -84,10 +87,14 @@ type AudioClip struct {
 	Duration     float64 `json:"duration"`
 }
 type AudioLane struct {
-	ID    string      `json:"id"`
-	Name  string      `json:"name"`
-	Muted bool        `json:"muted"`
-	Clips []AudioClip `json:"clips"`
+	Solo   bool        `json:"solo,omitempty"`
+	Locked bool        `json:"locked,omitempty"`
+	GainDB float64     `json:"gainDb,omitempty"`
+	DuckDB float64     `json:"duckDb,omitempty"`
+	ID     string      `json:"id"`
+	Name   string      `json:"name"`
+	Muted  bool        `json:"muted"`
+	Clips  []AudioClip `json:"clips"`
 }
 type AudioAsset struct {
 	ID       string  `json:"id"`
@@ -95,10 +102,17 @@ type AudioAsset struct {
 	FileName string  `json:"fileName"`
 	Duration float64 `json:"duration"`
 }
+type AudioMarker struct {
+	ID   string  `json:"id"`
+	Time float64 `json:"time"`
+	Name string  `json:"name"`
+}
 type AudioTimeline struct {
-	Assets              []AudioAsset `json:"assets,omitempty"`
-	Tracks              []AudioLane  `json:"tracks"`
-	AcceptedGenerations []string     `json:"acceptedGenerations,omitempty"`
+	Markers             []AudioMarker `json:"markers,omitempty"`
+	RegenerateMode      string        `json:"regenerateMode,omitempty"`
+	Assets              []AudioAsset  `json:"assets,omitempty"`
+	Tracks              []AudioLane   `json:"tracks"`
+	AcceptedGenerations []string      `json:"acceptedGenerations,omitempty"`
 }
 type Draft struct {
 	SynthesisSettings
@@ -161,6 +175,7 @@ type Generation struct {
 
 // GenerationSegment 保留单句来源；剪辑与原音频通过生成版本关联。
 type GenerationSegment struct {
+	Placement    string `json:"placement,omitempty"`
 	CueID        string `json:"cueId"`
 	SpeakerID    string `json:"speakerId"`
 	SpeakerName  string `json:"speakerName"`
@@ -169,6 +184,7 @@ type GenerationSegment struct {
 	TargetClipID string `json:"targetClipId,omitempty"`
 }
 type Activity struct {
+	CueID       string        `json:"cueId,omitempty"`
 	ProjectID   string        `json:"projectId,omitempty"`
 	CharacterID string        `json:"characterId,omitempty"`
 	RequestID   string        `json:"requestId,omitempty"`

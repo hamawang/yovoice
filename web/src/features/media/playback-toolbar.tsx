@@ -21,11 +21,11 @@ export function PlaybackToolbar({ time, duration, playing, disabled, loading, to
   </HStack>;
 }
 
-export function TrackZoom({ value, change, disabled }: { value: number; change: (value: number) => void; disabled: boolean }) {
+export function TrackZoom({ value, change, disabled, max = 8 }: { value: number; change: (value: number) => void; disabled: boolean; max?: number }) {
   const t = useTranslator();
   return <HStack className="track-zoom" gap={0} vAlign="center" role="group" aria-label={t('@yovoice.player.zoomGroup')}>
     <Button label={t('@yovoice.player.zoomOut')} isIconOnly icon={<ZoomOut />} size="sm" variant="ghost" isDisabled={disabled || value === 1} onClick={() => change(Math.max(1, value / 2))} />
-    <Button label={`${value * 100}%`} aria-label={t('@yovoice.player.zoomFit')} size="sm" variant="ghost" isDisabled={disabled} onClick={() => change(1)} />
-    <Button label={t('@yovoice.player.zoomIn')} isIconOnly icon={<ZoomIn />} size="sm" variant="ghost" isDisabled={disabled || value === 8} onClick={() => change(Math.min(8, value * 2))} />
+    <Button label={`${Math.round(value * 100)}%`} aria-label={t('@yovoice.player.zoomFit')} size="sm" variant="ghost" isDisabled={disabled} onClick={() => change(1)} />
+    <Button label={t('@yovoice.player.zoomIn')} isIconOnly icon={<ZoomIn />} size="sm" variant="ghost" isDisabled={disabled || value >= max} onClick={() => change(Math.min(max, value * 2))} />
   </HStack>;
 }

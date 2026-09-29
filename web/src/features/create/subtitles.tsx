@@ -1,13 +1,13 @@
-import { type ReactNode, lazy, Suspense, useLayoutEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, lazy, Suspense, useLayoutEffect, useRef, useState } from 'react';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { useTranslator } from '@astryxdesign/core/i18n';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { AppDialog } from '../../shared/ui/app-dialog';
-import { Plus, Clock3 } from 'lucide-react';
+import { Plus, Clock3, ListRestart, LocateFixed } from 'lucide-react';
 import { Selector } from '../../shared/selector';
-import { type Character, type Draft, type SubtitleDocument } from '../../shared/workbench';
+import { cueAudioStatus, type Generation, type Character, type Draft, type SubtitleDocument } from '../../shared/workbench';
 import { SubtitleParser } from './subtitle-parser';
 
 const SeededAvatar = lazy(() => import('../../shared/ui/seeded-avatar').then(module => ({ default: module.SeededAvatar })));
@@ -63,7 +63,7 @@ export function SubtitleImport({ onImport, onError, trigger }: { trigger?: (open
   </>;
 }
 
-export function SubtitleEditor({ draft, characters, change, renderFooter, selectedCue, selectCue }: { selectedCue: number; selectCue: (index: number) => void; renderFooter: (controls: ReactNode) => ReactNode; draft: Draft; characters: Character[]; change: (patch: Partial<Draft>) => void }) {
+export function SubtitleEditor({ draft, characters, change, renderFooter, selectedCue, selectCue, history = [], playingCue = -1, failedCue, busy = false, generatePending }: { history?: Generation[]; playingCue?: number; failedCue?: string; busy?: boolean; generatePending?: (ids: string[]) => void; selectedCue: number; selectCue: (index: number) => void; renderFooter: (controls: ReactNode) => ReactNode; draft: Draft; characters: Character[]; change: (patch: Partial<Draft>) => void }) {
   const t = useTranslator();
   const [page, setPage] = useState(0);
   const editor = useRef<HTMLElement>(null);
@@ -71,6 +71,16 @@ export function SubtitleEditor({ draft, characters, change, renderFooter, select
   const lastSpeaker = useRef(draft.subtitles!.cues.at(-1)?.speakerId ?? draft.subtitles!.speakers[0].id);
   const [showSpeakers, setShowSpeakers] = useState(false);
   const [showTimes, setShowTimes] = useState(false);
+  const [follow, setFollow] = useState(true);
+  const statuses = new Map(draft.subtitles!.cues.map(c => [c.id, c.id === failedCue ? 'failed' : cueAudioStatus(draft, history, c)]));
+  const pending = draft.subtitles!.cues.filter(c => c.id && c.text.trim() && statuses.get(c.id) !== 'ready').map(c => c.id!);
+  useEffect(() => {
+    if (playingCue < 0 || !follow) return;
+    setPage(Math.floor(playingCue / 50));
+    const id = requestAnimationFrame(() => editor.current?.querySelector(`[data-cue-index="${playingCue}"]`)?.scrollIntoView({ block: 'nearest' }));
+    return () => cancelAnimationFrame(id);
+  }, [playingCue, follow, page]);
+
   const document = draft.subtitles!;
   const update = (next: SubtitleDocument) => {
     if (next.cues.map(c => c.text).join('\n').length > 12000) return;
@@ -90,6 +100,7 @@ export function SubtitleEditor({ draft, characters, change, renderFooter, select
     } else if (!document.cues.length) editor.current?.querySelector<HTMLButtonElement>('.subtitle-add-cue')?.focus();
     pendingFocus.current = null;
   }, [document.cues, page]);
+  useEffect(() => { if (selectedCue >= 0) setPage(Math.floor(selectedCue / 50)); }, [selectedCue]);
   const removeCue = (index: number, backward: boolean) => {
     lastSpeaker.current = document.cues[index].speakerId;
     const cues = document.cues.filter((_, i) => i !== index);
@@ -98,7 +109,7 @@ export function SubtitleEditor({ draft, characters, change, renderFooter, select
     setPage(Math.floor(next / 50)); selectCue(next);
     update({ ...document, cues });
   };
-  return <><VStack ref={editor} className="subtitle-editor" gap={2}>
+  return <><VStack ref={editor} className="subtitle-editor" gap={2} onPointerDown={e => { if (playingCue >= 0 && e.target === e.currentTarget) setFollow(false); }} onWheel={() => { if (playingCue >= 0) setFollow(false); }} onTouchMove={() => { if (playingCue >= 0) setFollow(false); }}>
     {showSpeakers ? <AppDialog title={t('@yovoice.subtitle.settings')} width={520} onClose={() => setShowSpeakers(false)} closeLabel={t('@yovoice.action.cancel')} actions={<Button size="sm" variant="ghost" icon={<Plus />} label={t('@yovoice.subtitle.addSpeaker')} isDisabled={document.speakers.length >= 100} onClick={() => update({ ...document, speakers: [...document.speakers, { id: crypto.randomUUID(), sourceName: '' }] })} />}>
 
       <VStack gap={0}>
@@ -120,8 +131,9 @@ export function SubtitleEditor({ draft, characters, change, renderFooter, select
       {document.cues.slice(page * 50, (page + 1) * 50).map((cue, offset) => {
         const index = page * 50 + offset;
         const speaker = document.speakers.find(s => s.id === cue.speakerId)!;
-        return <HStack key={cue.id ?? index} data-cue-index={index} className="subtitle-cue" data-selected={selectedCue === index} onFocusCapture={() => selectCue(index)} onClick={() => selectCue(index)} gap={3} vAlign="start">
+        return <HStack key={cue.id ?? index} data-cue-index={index} className="subtitle-cue" data-selected={selectedCue === index} data-playing={playingCue === index} onFocusCapture={() => selectCue(index)} onClick={() => selectCue(index)} gap={3} vAlign="start">
           <DropdownMenu presentation="popover" hasChevron={false} menuWidth="max-content" button={{ size: 'sm', variant: 'ghost', isIconOnly: true, className: 'subtitle-speaker-trigger', label: t('@yovoice.subtitle.lineSpeaker', { n: index + 1 }), icon: <SpeakerAvatar seed={speaker.characterId ?? `${draft.id}:${speaker.id}`} /> }} items={document.speakers.map((s, i) => ({ id: s.id, label: label(i), description: s.sourceName || undefined, icon: <SpeakerAvatar seed={s.characterId ?? `${draft.id}:${s.id}`} />, onClick: () => update({ ...document, cues: document.cues.map((c, j) => j === index ? { ...c, speakerId: s.id } : c) }) }))} />
+          {cue.text.trim() && statuses.get(cue.id) !== 'ready' ? <i className="cue-audio-status" data-status={statuses.get(cue.id)} role="img" aria-label={t(`@yovoice.timeline.${statuses.get(cue.id)}Cue`)} title={t(`@yovoice.timeline.${statuses.get(cue.id)}Cue`)} /> : null}
           <VStack gap={0} className="grow">
             {showTimes ? <small className="subtitle-time">{timestamp(cue.start)} – {timestamp(cue.end)}</small> : null}
             <CueText onSplit={(start, end) => {
@@ -146,6 +158,8 @@ export function SubtitleEditor({ draft, characters, change, renderFooter, select
     {pages > 1 ? <HStack gap={3} vAlign="center" hAlign="end"><Button size="sm" variant="ghost" label={t('@yovoice.subtitle.previous')} isDisabled={page === 0} onClick={() => setPage(page - 1)} /><small>{page + 1} / {pages}</small><Button size="sm" variant="ghost" label={t('@yovoice.subtitle.next')} isDisabled={page + 1 >= pages} onClick={() => setPage(page + 1)} /></HStack> : null}
   </VStack>
   {renderFooter(<HStack gap={2} vAlign="center">
+      {generatePending ? <Button size="sm" variant="ghost" isIconOnly icon={<ListRestart />} label={t('@yovoice.timeline.generatePending')} tooltip={t('@yovoice.timeline.generatePending')} isDisabled={busy || !pending.length} onClick={() => generatePending(pending)} /> : null}
+      <Button size="sm" variant="ghost" isIconOnly icon={<LocateFixed />} label={t('@yovoice.timeline.follow')} tooltip={t('@yovoice.timeline.follow')} aria-pressed={follow} onClick={() => setFollow(!follow)} />
       <Button size="sm" variant="secondary" label={t('@yovoice.subtitle.settings')} onClick={() => setShowSpeakers(true)} />
       <Button size="sm" variant="ghost" isIconOnly icon={<Clock3 />} label={t(showTimes ? '@yovoice.subtitle.hideTimes' : '@yovoice.subtitle.showTimes')} aria-pressed={showTimes} onClick={() => setShowTimes(!showTimes)} />
     </HStack>)}

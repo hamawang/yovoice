@@ -1900,5 +1900,119 @@
   },
   "@yovoice.project.copyShort": {
     "defaultMessage": "Duplicate"
+  },
+  "@yovoice.timeline.copy": {
+    "defaultMessage": "Copy clips"
+  },
+  "@yovoice.timeline.paste": {
+    "defaultMessage": "Paste clips"
+  },
+  "@yovoice.timeline.duplicate": {
+    "defaultMessage": "Duplicate"
+  },
+  "@yovoice.timeline.rippleDelete": {
+    "defaultMessage": "Ripple delete"
+  },
+  "@yovoice.timeline.audition": {
+    "defaultMessage": "Play selection"
+  },
+  "@yovoice.timeline.contextPlay": {
+    "defaultMessage": "Play with context"
+  },
+  "@yovoice.timeline.fitSelection": {
+    "defaultMessage": "Fit selection"
+  },
+  "@yovoice.timeline.balance": {
+    "defaultMessage": "Balance role levels"
+  },
+  "@yovoice.timeline.snap": {
+    "defaultMessage": "Snap"
+  },
+  "@yovoice.timeline.loop": {
+    "defaultMessage": "Loop selection"
+  },
+  "@yovoice.timeline.more": {
+    "defaultMessage": "Edit menu"
+  },
+  "@yovoice.timeline.clipping": {
+    "defaultMessage": "Peak exceeds 0 dBFS. Enable peak protection or export again at the original level."
+  },
+  "@yovoice.timeline.exportScope": {
+    "defaultMessage": "Export scope"
+  },
+  "@yovoice.timeline.all": {
+    "defaultMessage": "All tracks"
+  },
+  "@yovoice.timeline.range": {
+    "defaultMessage": "Selected range"
+  },
+  "@yovoice.timeline.preventClipping": {
+    "defaultMessage": "Prevent clipping"
+  },
+  "@yovoice.timeline.peak": {
+    "defaultMessage": "Peak"
+  },
+  "@yovoice.timeline.volume": {
+    "defaultMessage": "Volume"
+  },
+  "@yovoice.timeline.duck": {
+    "defaultMessage": "Duck under dialogue"
+  },
+  "@yovoice.timeline.trackName": {
+    "defaultMessage": "Track name"
+  },
+  "@yovoice.timeline.solo": {
+    "defaultMessage": "Solo"
+  },
+  "@yovoice.timeline.lock": {
+    "defaultMessage": "Lock track"
+  },
+  "@yovoice.timeline.unlock": {
+    "defaultMessage": "Unlock track"
+  },
+  "@yovoice.timeline.trackSettings": {
+    "defaultMessage": "{name} settings"
+  },
+  "@yovoice.timeline.fadeIn": {
+    "defaultMessage": "Fade in"
+  },
+  "@yovoice.timeline.fadeOut": {
+    "defaultMessage": "Fade out"
+  },
+  "@yovoice.timeline.options": {
+    "defaultMessage": "Timeline options"
+  },
+  "@yovoice.timeline.marker": {
+    "defaultMessage": "Scene marker"
+  },
+  "@yovoice.timeline.markerName": {
+    "defaultMessage": "Scene name"
+  },
+  "@yovoice.timeline.regeneratePlacement": {
+    "defaultMessage": "After regeneration"
+  },
+  "@yovoice.timeline.ripple": {
+    "defaultMessage": "Ripple this track"
+  },
+  "@yovoice.timeline.preserve": {
+    "defaultMessage": "Preserve positions"
+  },
+  "@yovoice.timeline.gap": {
+    "defaultMessage": "Pause"
+  },
+  "@yovoice.timeline.missingCue": {
+    "defaultMessage": "Not generated"
+  },
+  "@yovoice.timeline.staleCue": {
+    "defaultMessage": "Needs update"
+  },
+  "@yovoice.timeline.failedCue": {
+    "defaultMessage": "Generation failed"
+  },
+  "@yovoice.timeline.generatePending": {
+    "defaultMessage": "Generate pending lines"
+  },
+  "@yovoice.timeline.follow": {
+    "defaultMessage": "Follow playback"
   }
 }

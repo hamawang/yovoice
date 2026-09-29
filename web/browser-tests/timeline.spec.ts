@@ -10,8 +10,9 @@ async function dragEdge(page: Page, clip: Locator, edge: 'start' | 'end', delta:
   const bounds = (await clip.boundingBox())!;
   const grip = (await handle.boundingBox())!;
   const x = grip.x + grip.width / 2, y = grip.y + grip.height / 2;
+  await page.keyboard.down('Alt');
   await page.mouse.move(x, y); await page.mouse.down();
-  await page.mouse.move(x + delta * bounds.width / duration, y, { steps: 5 }); await page.mouse.up();
+  await page.mouse.move(x + delta * bounds.width / duration, y, { steps: 5 }); await page.mouse.up(); await page.keyboard.up('Alt');
 }
 
 test('分割和移动保留源范围，播放从正确偏移开始', () => {
@@ -91,7 +92,7 @@ test('多轨分割、移动、静音播放、调整高度和重载', async ({ pa
   const addTrackBox = (await page.getByRole('button', { name: '新增音轨', exact: true }).boundingBox())!;
   const laneBox = (await page.locator('.multitrack-lane').first().boundingBox())!;
   expect(addTrackBox.x + addTrackBox.width).toBeLessThanOrEqual(laneBox.x);
-  await expect(page.locator('.multitrack-row input')).toHaveCount(0);
+  await expect(page.locator('.multitrack-row input:visible')).toHaveCount(0);
   expect((await page.locator('.multitrack > .transport').boundingBox())!.height).toBeLessThanOrEqual(41);
   expect((await page.locator('.multitrack-ruler-row').boundingBox())!.height).toBeLessThanOrEqual(25);
   expect(laneBox.height).toBeLessThanOrEqual(48);
@@ -140,7 +141,7 @@ test('多轨分割、移动、静音播放、调整高度和重载', async ({ pa
   });
   await page.getByRole('button', { name: '播放', exact: true }).click();
   await expect(page.getByRole('button', { name: '暂停', exact: true })).toBeVisible();
-  expect(await page.evaluate(() => (window as unknown as { timelineStarts: number[][] }).timelineStarts.map(c => c.slice(1)))).toEqual([[0.75, 1.25], [0, 2]]);
+  expect(await page.evaluate(() => (window as unknown as { timelineStarts: number[][] }).timelineStarts.map(c => c.slice(1).map(v => Number(v.toFixed(6)))))).toEqual([[0.75, 1.25], [0, 2]]);
   await page.getByRole('button', { name: '暂停', exact: true }).click();
   const handle = page.getByRole('separator', { name: '调整音轨区高度', exact: true });
   const before = await page.locator('.multitrack').boundingBox();

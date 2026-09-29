@@ -91,3 +91,20 @@ func TestTimelineUploadPersistsWithoutLibraryEntries(t *testing.T) {
 		t.Fatal("不能越界读取源音频")
 	}
 }
+
+func TestTimelineEffectValidation(t *testing.T) {
+	timeline := &AudioTimeline{Tracks: []AudioLane{{ID: "t", Name: "t", GainDB: 13}}}
+	if validateTimeline(timeline, nil) == nil {
+		t.Fatal("接受越界增益")
+	}
+	timeline.Tracks[0].GainDB = 0
+	timeline.Tracks[0].DuckDB = -1
+	if validateTimeline(timeline, nil) == nil {
+		t.Fatal("接受负压低量")
+	}
+	timeline.Tracks[0].DuckDB = 12
+	timeline.Markers = []AudioMarker{{ID: "m", Name: "x", Time: -1}}
+	if validateTimeline(timeline, nil) == nil {
+		t.Fatal("接受负标记位置")
+	}
+}
