@@ -214,6 +214,12 @@ public partial class MainWindow : Window
                     string sidebarPath = Path.Combine(service.Root, "sidebar.json");
                     File.WriteAllText(sidebarPath + ".tmp", JsonSerializer.Serialize(new { size, isCollapsed = collapsed }));
                     File.Move(sidebarPath + ".tmp", sidebarPath, true); result = true; break;
+                case "project.export":
+                    var projectSave = new SaveFileDialog { Filter = "Yovoice 工程|*.yovoice", DefaultExt = ".yovoice", FileName = Path.GetFileName(data.GetProperty("name").GetString() ?? "project"), OverwritePrompt = true };
+                    result = projectSave.ShowDialog(this) == true ? await service.CallAsync(method, new { id = data.GetProperty("id").GetString(), path = projectSave.FileName }) : false; break;
+                case "project.import":
+                    var projectOpen = new OpenFileDialog { Filter = "Yovoice 工程|*.yovoice" };
+                    result = projectOpen.ShowDialog(this) == true ? await service.CallAsync(method, new { path = projectOpen.FileName }) : null; break;
                 case "audio.export":
                     string encoded = data.GetProperty("base64").GetString() ?? "";
                     if (encoded.Length > 240_000_000) throw new ArgumentException("导出音频超过大小限制。");

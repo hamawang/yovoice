@@ -183,6 +183,7 @@ func TestMediaPersistenceAndRollback(t *testing.T) {
 	if _, e = w.MediaFile("voices", "../invalid"); e == nil {
 		t.Fatal("非法 ID")
 	}
+	must(t, os.Remove(filepath.Join(root, "state.backup.json")))
 	must(t, os.WriteFile(filepath.Join(root, "state.json"), []byte("broken"), 0600))
 	if _, e = NewStore(root); e == nil {
 		t.Fatal("损坏状态被接受")

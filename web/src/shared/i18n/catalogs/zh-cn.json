@@ -2014,5 +2014,17 @@
   },
   "@yovoice.timeline.follow": {
     "defaultMessage": "跟随播放"
+  },
+  "@yovoice.timeline.package": {
+    "defaultMessage": "导出工程"
+  },
+  "@yovoice.timeline.importProject": {
+    "defaultMessage": "导入工程"
+  },
+  "@yovoice.timeline.packageInvalid": {
+    "defaultMessage": "工程文件无效或素材不完整。"
+  },
+  "@yovoice.timeline.packageLimit": {
+    "defaultMessage": "工程超过 500 MB，请分章备份。"
   }
 }

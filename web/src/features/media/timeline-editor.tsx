@@ -15,12 +15,12 @@ import { AppDialog } from '../../shared/ui/app-dialog';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { SpeakerAvatar } from '../create/subtitles';
 import { encodeWav } from '../../shared/lib/sound';
-import { mediaUrl, saveAudio, importTimelineFile } from '../../shared/lib/client';
+import { isDesktop, mediaUrl, saveAudio, importTimelineFile } from '../../shared/lib/client';
 import { formatTime, projectKind, type AudioLane, type AudioAsset, type AudioClip, type AudioTimeline, type Generation, type Draft } from '../../shared/workbench';
 import { Timeline, TimelineHistory } from './timeline';
 
-export function TimelineEditor({ draft, busy, regenerate, selectCue, selectedCue, cueSelectionRevision, playbackCue, value, history, change, suspended, onError }: {
-  cueSelectionRevision?: number; selectedCue?: number; playbackCue?: (index: number) => void; draft: Draft; busy: boolean; regenerate: (cueId: string, clipId: string) => Promise<void>; selectCue: (index: number) => void;
+export function TimelineEditor({ draft, busy, regenerate, exportProject, selectCue, selectedCue, cueSelectionRevision, playbackCue, value, history, change, suspended, onError }: {
+  exportProject: () => Promise<void>; cueSelectionRevision?: number; selectedCue?: number; playbackCue?: (index: number) => void; draft: Draft; busy: boolean; regenerate: (cueId: string, clipId: string) => Promise<void>; selectCue: (index: number) => void;
   value: AudioTimeline; history: Generation[]; change: (value: AudioTimeline) => void; suspended: boolean; onError: (message: string) => void;
 }) {
   const t = useTranslator();
@@ -341,6 +341,7 @@ export function TimelineEditor({ draft, busy, regenerate, selectCue, selectedCue
       { label: t('@yovoice.timeline.loop'), isDisabled: !range && !selectedIds.length, onClick: () => { if (!range) setRange(selectionRange()); setLoop(!loop); } },
       { label: t('@yovoice.player.zoomFit'), onClick: () => { setExtent(Math.max(duration * 1.2 + 2, 10)); setZoom(1); if (scrollRef.current) scrollRef.current.scrollLeft = 0; } },
       { label: t('@yovoice.timeline.fitSelection'), isDisabled: !range && !selectedIds.length, onClick: fitSelection },
+      ...(isDesktop ? [{ label: t('@yovoice.timeline.package'), onClick: () => void exportProject().catch(e => onError((e as Error).message)) }] : []),
       { label: t('@yovoice.timeline.balance'), isDisabled: !duration, onClick: () => void (async () => { try { const audio = context.current ??= new AudioContext(); for (const c of value.tracks.flatMap(t => t.clips)) await load(Timeline.sourceKey(c), audio); edit(Timeline.balance(value, history, buffers.current)); } catch (e) { onError((e as Error).message); } })() },
     ] },
   ];

@@ -785,6 +785,10 @@ func (w *Workbench) Call(method string, data json.RawMessage) (any, error) {
 	switch method {
 	case "character.save", "character.delete", "character.preview", "character.discardPreview", "voice.fromGeneration", "voice.update":
 		return w.libraryCall(method, data)
+	case "project.export":
+		return true, w.ExportProject(p.ID, p.Path)
+	case "project.import":
+		return w.ImportProject(p.Path)
 	case "state.get":
 		return map[string]any{"state": w.Store.Read(), "catalog": Catalog, "desktop": true}, nil
 	case "media.path":

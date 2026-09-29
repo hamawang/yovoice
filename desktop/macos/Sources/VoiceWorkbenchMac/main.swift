@@ -268,6 +268,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             UserDefaults.standard.set(String(data: saved, encoding: .utf8), forKey: "sidebar-layout")
             return ["id": message["id"]!, "result": true]
         }
+        if method == "project.export" {
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [UTType(filenameExtension: "yovoice") ?? .data]
+            panel.nameFieldStringValue = (data["name"] as? String ?? "project") + ".yovoice"
+            let response = await withCheckedContinuation { continuation in panel.beginSheetModal(for: window) { continuation.resume(returning: $0) } }
+            guard response == .OK, let url = panel.url else { return ["id": message["id"]!, "result": false] }
+            data["path"] = url.path
+            message["data"] = data
+        }
+        if method == "project.import" {
+            let panel = NSOpenPanel()
+            panel.allowedContentTypes = [UTType(filenameExtension: "yovoice") ?? .data]
+            panel.allowsMultipleSelection = false
+            let response = await withCheckedContinuation { continuation in panel.beginSheetModal(for: window) { continuation.resume(returning: $0) } }
+            guard response == .OK, let url = panel.url else { return ["id": message["id"]!, "result": NSNull()] }
+            data["path"] = url.path
+            message["data"] = data
+        }
         if method == "audio.export" {
             guard let encoded = data["base64"] as? String, encoded.utf8.count <= 240_000_000,
                   let audio = Data(base64Encoded: encoded), audio.count >= 44,

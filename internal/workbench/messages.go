@@ -4,6 +4,8 @@ package workbench
 type MessageCode string
 
 const (
+	MsgErrProjectPackage         MessageCode = "@yovoice.timeline.packageInvalid"
+	MsgErrProjectPackageLimit    MessageCode = "@yovoice.timeline.packageLimit"
 	MsgErrTimelineImportDuration MessageCode = "@yovoice.timeline.importDuration"
 	MsgErrTimelineInvalid        MessageCode = "@yovoice.timeline.invalid"
 	MsgErrTimelineInUse          MessageCode = "@yovoice.timeline.inUse"
@@ -139,7 +141,7 @@ func encodeCallError(err error) map[string]any {
 
 // AllMessageCodes lists every MessageCode constant for catalog coverage checks.
 func AllMessageCodes() []MessageCode {
-	return []MessageCode{MsgErrTimelineImportDuration, MsgErrTimelineInvalid, MsgErrTimelineInUse, MsgErrSubtitleInvalid, MsgActivitySubtitle,
+	return []MessageCode{MsgErrProjectPackage, MsgErrProjectPackageLimit, MsgErrTimelineImportDuration, MsgErrTimelineInvalid, MsgErrTimelineInUse, MsgErrSubtitleInvalid, MsgActivitySubtitle,
 		MsgErrVoiceInUse, MsgErrVoiceReferenced, MsgErrCharacterInvalid,
 		MsgErrModelImportRequired,
 		MsgErrOmniReferenceRequired,

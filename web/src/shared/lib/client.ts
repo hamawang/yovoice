@@ -18,16 +18,19 @@ native?.addEventListener('message', ({ data }) => {
   clearTimeout(callback.timer); pending.delete(data.id);
   if (data.error) callback.reject(parseCallError(data.error)); else callback.resolve(data.result);
 });
-let preview: State;
-try {
-  const stored = JSON.parse(localStorage.getItem('voice-workbench-v1') ?? 'null');
-  preview = stored ?? emptyState();
-  preview.characters ??= []; preview.previews = [];
-  if (!preview.preferences?.uiLocale || (preview.preferences.uiLocale !== 'zh-CN' && preview.preferences.uiLocale !== 'en')) {
-    preview = { ...preview, preferences: { ...preview.preferences, uiLocale: 'zh-CN' } };
-  }
-} catch { preview = emptyState(); }
-function publish() { localStorage.setItem('voice-workbench-v1', JSON.stringify(preview)); listeners.forEach(fn => fn(structuredClone(preview))); }
+let preview = emptyState();
+for (const key of ['voice-workbench-v1', 'voice-workbench-backup']) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(key) ?? 'null');
+    if (!stored || !Array.isArray(stored.drafts) || !Array.isArray(stored.history) || !Array.isArray(stored.voices)) continue;
+    preview = stored; break;
+  } catch { /* 主副本损坏时继续读取恢复备份。 */ }
+}
+preview.characters ??= []; preview.previews = [];
+if (!['zh-CN', 'en'].includes(preview.preferences?.uiLocale)) {
+  preview = { ...preview, preferences: { ...preview.preferences, uiLocale: 'zh-CN' } };
+}
+function publish() { const previous = localStorage.getItem('voice-workbench-v1'); if (previous) { try { JSON.parse(previous); localStorage.setItem('voice-workbench-backup', previous); } catch { /* 损坏的主副本不覆盖恢复备份。 */ } } localStorage.setItem('voice-workbench-v1', JSON.stringify(preview)); listeners.forEach(fn => fn(structuredClone(preview))); }
 export function subscribe(listener: (state: State) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 export async function call<T = unknown>(method: string, data: unknown = {}): Promise<T> {
   if (native) return new Promise<T>((resolve, reject) => {

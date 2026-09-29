@@ -7,6 +7,7 @@ import { useTranslator } from '@astryxdesign/core/i18n';
 import { Copy, Folder, History, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { AppDialog } from '../../shared/ui/app-dialog';
 import { createDraft, projectKind, type Draft, type UiLocale } from '../../shared/workbench';
+import { call, isDesktop } from '../../shared/lib/client';
 import { SpeakerAvatar } from '../create/subtitles';
 import { LibraryEmpty, LibraryPage } from './library-layout';
 
@@ -30,10 +31,11 @@ export function NewProject({ locale, create, onError, button, kind }: {
     items={[
       { id: 'story', label: t('@yovoice.project.story'), onClick: () => void start('story') },
       { id: 'text', label: t('@yovoice.project.text'), onClick: () => void start('text') },
+      ...(isDesktop ? [{ id: 'import', label: t('@yovoice.timeline.importProject'), onClick: () => { setBusy(true); void call<Draft | null>('project.import').then(d => d ? create(d) : undefined).catch(e => onError((e as Error).message)).finally(() => setBusy(false)); } }] : []),
     ]} />;
 }
 
-export function Projects({ drafts, kind, open, create, copy, save, remove, history }: {
+export function Projects({ drafts, kind, open, create, copy, save, remove, history, onError }: { onError: (error: string) => void;
   drafts: Draft[]; kind: 'text' | 'story'; open: (draft: Draft) => void; create: ReactNode;
   history: (draft: Draft) => void; copy: (draft: Draft) => void; save: (draft: Draft) => Promise<void>; remove: (draft: Draft) => void;
 }) {
@@ -65,6 +67,7 @@ export function Projects({ drafts, kind, open, create, copy, save, remove, histo
             <DropdownMenu presentation="popover" alignment="end" menuWidth="calc(var(--spacing-10) * 4)" hasChevron={false}
               button={{ label: t('@yovoice.project.more'), icon: <MoreVertical />, isIconOnly: true, variant: 'ghost', size: 'sm' }}
               items={[
+              ...(isDesktop ? [{ label: t('@yovoice.timeline.package'), onClick: () => void save(draft).then(() => call('project.export', { id: draft.id, name: draft.title })).catch(e => onError((e as Error).message)) }] : []),
                 { id: 'rename', label: t('@yovoice.project.renameShort'), icon: <Pencil className="project-menu-icon" strokeWidth={1.5} />, onClick: () => { setError(''); setRenaming(draft); } },
                 { id: 'copy', label: t('@yovoice.project.copyShort'), icon: <Copy className="project-menu-icon" strokeWidth={1.5} />, onClick: () => copy(draft) },
                 ...(kind === 'text' ? [{ id: 'history', label: t('@yovoice.history.versions'), icon: <History className="project-menu-icon" strokeWidth={1.5} />, onClick: () => history(draft) }] : []),

@@ -2014,5 +2014,17 @@
   },
   "@yovoice.timeline.follow": {
     "defaultMessage": "Follow playback"
+  },
+  "@yovoice.timeline.package": {
+    "defaultMessage": "Export project"
+  },
+  "@yovoice.timeline.importProject": {
+    "defaultMessage": "Import project"
+  },
+  "@yovoice.timeline.packageInvalid": {
+    "defaultMessage": "Project file is invalid or media is incomplete."
+  },
+  "@yovoice.timeline.packageLimit": {
+    "defaultMessage": "Project exceeds 500 MB. Back up chapters separately."
   }
 }

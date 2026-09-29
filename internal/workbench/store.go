@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Store struct {
@@ -28,15 +29,38 @@ func NewStore(root string) (*Store, error) {
 	fromFile := false
 	if e == nil {
 		fromFile = true
-		if string(b) == "null" {
-			return nil, Err(MsgErrStateCorrupt, nil)
-		}
-		if e = json.Unmarshal(b, &s.state); e != nil {
-			return nil, Err(MsgErrStateCorrupt, MessageParams{"detail": e.Error()})
+		if string(b) == "null" || json.Unmarshal(b, &s.state) != nil {
+			backup, backupErr := os.ReadFile(filepath.Join(root, "state.backup.json"))
+			recovered := defaultState()
+			if backupErr != nil || string(backup) == "null" || json.Unmarshal(backup, &recovered) != nil {
+				return nil, Err(MsgErrStateCorrupt, nil)
+			}
+			// 保留损坏文件供恢复排查，绝不以空工程覆盖用户数据。
+			if e = os.Rename(filepath.Join(root, "state.json"), filepath.Join(root, "state.corrupt-"+time.Now().Format("20060102-150405.000000000")+".json")); e != nil {
+				return nil, e
+			}
+			s.state = recovered
+			if e = writeState(filepath.Join(root, "state.json"), recovered); e != nil {
+				return nil, e
+			}
 		}
 	} else if !os.IsNotExist(e) {
 		return nil, e
+	} else {
+		backup, backupErr := os.ReadFile(filepath.Join(root, "state.backup.json"))
+		if backupErr == nil {
+			if string(backup) == "null" || json.Unmarshal(backup, &s.state) != nil {
+				return nil, Err(MsgErrStateCorrupt, nil)
+			}
+			fromFile = true
+			if e = writeState(filepath.Join(root, "state.json"), s.state); e != nil {
+				return nil, e
+			}
+		} else if !os.IsNotExist(backupErr) {
+			return nil, backupErr
+		}
 	}
+
 	if s.state.Activity != nil && s.state.Activity.Status == "running" {
 		s.state.Activity.Status = "interrupted"
 		s.state.Activity.Code = MsgActivityInterrupted
@@ -89,6 +113,9 @@ func (s *Store) Update(change func(*State), persist bool) error {
 	next := clone(s.state)
 	change(&next)
 	if persist {
+		if e := writeState(filepath.Join(s.Root, "state.backup.json"), s.state); e != nil {
+			return e
+		}
 		if e := writeState(filepath.Join(s.Root, "state.json"), next); e != nil {
 			return e
 		}
