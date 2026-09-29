@@ -25,9 +25,16 @@ export class Timeline {
     return { ...value, tracks: value.tracks.map(track => ({ ...track, clips: [...track.clips.filter(c => c.id !== id), ...(track.id === laneId ? [{ ...clip, start }] : [])].sort((a, b) => a.start - b.start) })) };
   }
 
-  static trim(value: AudioTimeline, id: string, offset: number, end: number, sourceDuration: number): AudioTimeline {
-    if (![offset, end, sourceDuration].every(Number.isFinite) || offset < 0 || end > sourceDuration || end - offset < 0.01) return value;
-    return { ...value, tracks: value.tracks.map(track => ({ ...track, clips: track.clips.map(c => c.id !== id || c.start + end - offset > 86400 ? c : { ...c, offset, duration: end - offset }) })) };
+  // 拖动左边缘时固定右边缘，拖动右边缘时固定左边缘；裁掉的源音频仍可拉回。
+  static trimEdge(value: AudioTimeline, id: string, edge: 'start' | 'end', delta: number, sourceDuration: number): AudioTimeline {
+    const clip = value.tracks.flatMap(track => track.clips).find(c => c.id === id);
+    if (!clip || !Number.isFinite(delta) || !Number.isFinite(sourceDuration) || sourceDuration <= 0) return value;
+    const shift = edge === 'start'
+      ? Math.max(-Math.min(clip.offset, clip.start), Math.min(delta, clip.duration - 0.01))
+      : Math.max(0.01 - clip.duration, Math.min(delta, sourceDuration - clip.offset - clip.duration, 86400 - clip.start - clip.duration));
+    return { ...value, tracks: value.tracks.map(track => ({ ...track, clips: track.clips.map(c => c.id !== id ? c : {
+      ...c, start: c.start + (edge === 'start' ? shift : 0), offset: c.offset + (edge === 'start' ? shift : 0), duration: c.duration + (edge === 'start' ? -shift : shift),
+    }) })) };
   }
 
   // 已接收的版本单独记忆，删除片段或重新打开作品不会把它再次插入。

@@ -6,12 +6,11 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { ResizeHandle } from '@astryxdesign/core/Resizable';
 import { useAudioPanel } from './use-audio-panel';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { Upload, History, FileAudio, Plus, Scissors, Trash2, Volume2, VolumeX, RefreshCw } from 'lucide-react';
+import { Upload, History, FileAudio, Plus, Scissors, Trash2, Volume2, VolumeX, RefreshCw, GripVertical } from 'lucide-react';
 import { AppDialog } from '../../shared/ui/app-dialog';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { SpeakerAvatar } from '../create/subtitles';
 import { encodeWav } from '../../shared/lib/sound';
-import { Selector } from '../../shared/selector';
 import { mediaUrl, saveAudio, importTimelineFile } from '../../shared/lib/client';
 import { formatTime, projectKind, type AudioAsset, type AudioClip, type AudioTimeline, type Generation, type Draft } from '../../shared/workbench';
 import { Timeline } from './timeline';
@@ -30,6 +29,8 @@ export function TimelineEditor({ draft, busy, regenerate, selectCue, value, hist
   const [historyTrack, setHistoryTrack] = useState('');
   const [historyQuery, setHistoryQuery] = useState('');
   const [selected, setSelected] = useState('');
+  const [trimPreview, setTrimPreview] = useState<AudioTimeline | null>(null);
+  const trimDrag = useRef<{ value: AudioTimeline; next: AudioTimeline; id: string; edge: 'start' | 'end'; sourceDuration: number; x: number; pixelsPerSecond: number; scroll: HTMLElement; scrollLeft: number } | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportName, setExportName] = useState(draft.title);
@@ -49,7 +50,7 @@ export function TimelineEditor({ draft, busy, regenerate, selectCue, value, hist
   const draggedOffset = useRef(0);
   const duration = Timeline.duration(value);
   const scale = Math.max(duration * 1.2 + 2, 10);
-  const clip = value.tracks.flatMap(track => track.clips).find(c => c.id === selected);
+  const clip = (trimPreview ?? value).tracks.flatMap(track => track.clips).find(c => c.id === selected);
   const audioSources = new Map<string, { title: string; duration: number; fileName: string; segment?: Generation['segment'] }>([
     ...history.map(g => [g.id, g] as const),
     ...(value.assets ?? []).map(asset => [`asset:${asset.id}`, { ...asset, title: asset.name }] as const),
@@ -75,7 +76,7 @@ export function TimelineEditor({ draft, busy, regenerate, selectCue, value, hist
     };
   }, []);
   useEffect(() => { if (suspended) stop(); }, [suspended]);
-  useEffect(() => { stop(); }, [value]);
+  useEffect(() => { stop(); trimDrag.current = null; setTrimPreview(null); }, [value]);
   const edit = (next: AudioTimeline) => { stop(); change(next); };
   const load = async (id: string, audio: AudioContext): Promise<AudioBuffer> => {
     const cached = buffers.current.get(id);
@@ -159,8 +160,20 @@ export function TimelineEditor({ draft, busy, regenerate, selectCue, value, hist
     const nextClip: AudioClip = { id: crypto.randomUUID(), ...source, start, offset: 0 };
     edit({ ...current, assets: asset ? [...(current.assets ?? []), asset] : current.assets, tracks: current.tracks.map(t => t.id === trackId ? { ...t, clips: [...t.clips, nextClip] } : t) });
   };
-  const selectedTrack = value.tracks.find(track => track.clips.some(c => c.id === selected));
-  return <VStack as="footer" className="multitrack audio-panel" gap={0} style={{ height: panel.size }}>
+  const selectClip = (c: AudioClip) => {
+    setSelected(c.id);
+    const id = history.find(g => g.id === c.generationId)?.segment?.cueId;
+    const index = draft.subtitles?.cues.findIndex(cue => cue.id === id) ?? -1;
+    if (index >= 0) selectCue(index);
+  };
+  const finishTrim = (commit: boolean) => {
+    const drag = trimDrag.current;
+    trimDrag.current = null; setTrimPreview(null);
+    if (commit && drag && drag.next !== drag.value) edit(drag.next);
+  };
+  return <VStack as="footer" className="multitrack audio-panel" gap={0} style={{ height: panel.size }} onKeyDown={e => {
+    if (e.key === 'Escape' && !exportOpen && !historyTrack) { finishTrim(false); setSelected(''); e.stopPropagation(); }
+  }}>
     <input ref={input} type="file" hidden accept="audio/*,.aac,.m4a,.mp3,.wav,.flac,.ogg,.opus,.aiff,.aif,.wma,.webm" onChange={async e => {
       const file = e.target.files?.[0]; e.target.value = '';
       if (!file) return;
@@ -195,13 +208,6 @@ export function TimelineEditor({ draft, busy, regenerate, selectCue, value, hist
       <Button size="sm" label={t('@yovoice.timeline.export')} isDisabled={!value.tracks.some(t => !t.muted && t.clips.length) || exporting} onClick={() => { stop(); setExportError(''); setExportName(draft.title); setExportOpen(true); }} />
       <TrackZoom value={zoom} change={setZoom} disabled={!duration} />
     </PlaybackToolbar>
-    {clip && generation ? <HStack className="multitrack-selection" gap={3} vAlign="center" wrap="wrap">
-      <small>{generation.segment?.speakerName || generation.title}</small>
-      <label>{t('@yovoice.timeline.position')} <input type="number" min={0} max={86400 - clip.duration} step={0.01} value={Number(clip.start.toFixed(2))} onChange={e => { if (e.target.value !== '') edit(Timeline.move(value, selected, selectedTrack!.id, e.target.valueAsNumber)); }} /></label>
-      <label>{t('@yovoice.timeline.trimStart')} <input type="number" min={0} max={clip.offset + clip.duration - 0.01} step={0.01} value={Number(clip.offset.toFixed(2))} onChange={e => { if (e.target.value !== '') edit(Timeline.trim(value, clip.id, e.target.valueAsNumber, clip.offset + clip.duration, generation.duration)); }} /></label>
-      <label>{t('@yovoice.timeline.trimEnd')} <input type="number" min={clip.offset + 0.01} max={generation.duration} step={0.01} value={Number((clip.offset + clip.duration).toFixed(2))} onChange={e => { if (e.target.value !== '') edit(Timeline.trim(value, clip.id, clip.offset, e.target.valueAsNumber, generation.duration)); }} /></label>
-      <Selector size="sm" label={t('@yovoice.timeline.moveTo')} value={selectedTrack?.id} isLabelHidden options={value.tracks.map(track => ({ value: track.id, label: track.name }))} onChange={id => edit(Timeline.move(value, selected, id, clip.start))} />
-    </HStack> : null}
     {exportOpen ? <AppDialog title={t('@yovoice.timeline.export')} busy={exporting} error={exportError.startsWith('@yovoice.') ? t(exportError) : exportError} onClose={() => setExportOpen(false)} actions={<Button label={t('@yovoice.timeline.exportConfirm')} variant="primary" isLoading={exporting} isDisabled={!exportName.trim()} onClick={async () => {
       setExporting(true); setExportError('');
       try {
@@ -211,7 +217,9 @@ export function TimelineEditor({ draft, busy, regenerate, selectCue, value, hist
         if (await saveAudio(encodeWav(result), exportName)) setExportOpen(false);
       } catch (error) { setExportError((error as Error).message); } finally { setExporting(false); }
     }} />}><TextInput label={t('@yovoice.timeline.exportName')} value={exportName} onChange={setExportName} /><small>{t('@yovoice.timeline.exportFormat')}</small></AppDialog> : null}
-    <VStack className="multitrack-scroll" gap={0}>
+    <VStack className="multitrack-scroll" gap={0} onPointerDown={e => {
+      if (!(e.target as Element).closest('button, input, [role="slider"], [role="menuitem"]')) setSelected('');
+    }}>
       <VStack className="multitrack-content" gap={0} style={{ width: `${zoom * 100}%` }}>
         <HStack gap={0} className="multitrack-ruler-row">
           <small className="multitrack-label">{t('@yovoice.timeline.tracks')}</small>
@@ -220,7 +228,7 @@ export function TimelineEditor({ draft, busy, regenerate, selectCue, value, hist
             <input type="range" aria-label={t('@yovoice.player.progress')} min={0} max={scale} step={0.01} value={Math.min(time, scale)} onChange={e => seek(Number(e.target.value))} />
           </VStack>
         </HStack>
-        {value.tracks.map(track => <HStack key={track.id} className="multitrack-row" gap={0}>
+        {(trimPreview ?? value).tracks.map(track => <HStack key={track.id} className="multitrack-row" gap={0}>
           <VStack className="multitrack-label" gap={0} vAlign="center" aria-label={track.name}>
             <HStack gap={0}><Button size="sm" variant="ghost" isIconOnly label={t(track.muted ? '@yovoice.timeline.unmute' : '@yovoice.timeline.mute', { name: track.name })} icon={track.muted ? <VolumeX /> : <Volume2 />} aria-pressed={track.muted} onClick={() => edit({ ...value, tracks: value.tracks.map(lane => lane.id === track.id ? { ...lane, muted: !lane.muted } : lane) })} /><Button size="sm" variant="ghost" isIconOnly label={t('@yovoice.timeline.removeTrack', { name: track.name })} icon={<Trash2 />} isDisabled={track.clips.length > 0} onClick={() => edit({ ...value, tracks: value.tracks.filter(lane => lane.id !== track.id) })} /></HStack>
           </VStack>
@@ -229,7 +237,42 @@ export function TimelineEditor({ draft, busy, regenerate, selectCue, value, hist
             const rect = e.currentTarget.getBoundingClientRect();
             edit(Timeline.move(value, id, track.id, Math.max(0, (e.clientX - rect.left) / rect.width * scale - draggedOffset.current)));
           }}>
-            {track.clips.map(c => <Button key={c.id} size="sm" variant="secondary" className="multitrack-clip" label={audioSources.get(Timeline.sourceKey(c))?.title ?? t('@yovoice.timeline.missing')} aria-pressed={selected === c.id} icon={<>{history.find(g => g.id === c.generationId)?.segment ? <SpeakerAvatar seed={`${draft.id}:${history.find(g => g.id === c.generationId)!.segment!.speakerId}`} /> : null}{peaks[Timeline.sourceKey(c)] ? <svg className="clip-waveform" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true">{peaks[Timeline.sourceKey(c)].slice(Math.floor(c.offset / buffers.current.get(Timeline.sourceKey(c))!.duration * 400), Math.ceil((c.offset + c.duration) / buffers.current.get(Timeline.sourceKey(c))!.duration * 400)).map((peak, i, values) => <line key={i} x1={i / values.length * 400} x2={i / values.length * 400} y1={20 - peak * 18} y2={20 + peak * 18} />)}</svg> : null}</>} draggable onDragStart={e => { e.dataTransfer.setData('text/yovoice-clip', c.id); const rect = e.currentTarget.getBoundingClientRect(); draggedOffset.current = (e.clientX - rect.left) / rect.width * c.duration; }} style={{ left: `${c.start / scale * 100}%`, width: `${c.duration / scale * 100}%`, opacity: track.muted ? 0.5 : 1 }} onClick={() => { setSelected(c.id); const id = history.find(g => g.id === c.generationId)?.segment?.cueId; const index = draft.subtitles?.cues.findIndex(cue => cue.id === id) ?? -1; if (index >= 0) selectCue(index); }} />)}
+            {track.clips.map(c => <HStack key={c.id} className="multitrack-region" gap={0} data-selected={selected === c.id} style={{ left: `${c.start / scale * 100}%`, width: `${c.duration / scale * 100}%`, opacity: track.muted ? 0.5 : 1 }}>
+              <Button size="sm" variant="secondary" className="multitrack-clip" label={audioSources.get(Timeline.sourceKey(c))?.title ?? t('@yovoice.timeline.missing')} aria-pressed={selected === c.id} icon={<>{history.find(g => g.id === c.generationId)?.segment ? <SpeakerAvatar seed={`${draft.id}:${history.find(g => g.id === c.generationId)!.segment!.speakerId}`} /> : null}{peaks[Timeline.sourceKey(c)] ? <svg className="clip-waveform" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true">{peaks[Timeline.sourceKey(c)].slice(Math.floor(c.offset / buffers.current.get(Timeline.sourceKey(c))!.duration * 400), Math.ceil((c.offset + c.duration) / buffers.current.get(Timeline.sourceKey(c))!.duration * 400)).map((peak, i, values) => <line key={i} x1={i / values.length * 400} x2={i / values.length * 400} y1={20 - peak * 18} y2={20 + peak * 18} />)}</svg> : null}</>} draggable onDragStart={e => { stop(); selectClip(c); e.dataTransfer.setData('text/yovoice-clip', c.id); const rect = e.currentTarget.getBoundingClientRect(); draggedOffset.current = (e.clientX - rect.left) / rect.width * c.duration; }} onClick={() => selectClip(c)} onKeyDown={e => {
+                if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+                e.preventDefault(); selectClip(c);
+                const lane = value.tracks.indexOf(track);
+                const destination = value.tracks[lane + (e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0)];
+                const delta = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
+                if (destination) edit(Timeline.move(value, c.id, destination.id, Math.max(0, Math.min(86400 - c.duration, c.start + delta * (e.shiftKey ? 0.1 : 0.01)))));
+              }} />
+              {(['start', 'end'] as const).map(edge => <Button key={edge} size="sm" variant="ghost" isIconOnly icon={<GripVertical />} className="multitrack-trim" data-edge={edge}
+                label={t(edge === 'start' ? '@yovoice.timeline.trimStart' : '@yovoice.timeline.trimEnd')} role="slider" aria-orientation="horizontal"
+                aria-valuemin={edge === 'start' ? Math.max(0, c.offset - c.start) : c.offset + 0.01}
+                aria-valuemax={edge === 'start' ? c.offset + c.duration - 0.01 : audioSources.get(Timeline.sourceKey(c))?.duration ?? c.offset + c.duration}
+                aria-valuenow={Number((edge === 'start' ? c.offset : c.offset + c.duration).toFixed(2))}
+                onPointerDown={e => {
+                  if (e.button !== 0) return;
+                  const sourceDuration = audioSources.get(Timeline.sourceKey(c))?.duration;
+                  if (!sourceDuration) return;
+                  e.preventDefault(); e.stopPropagation(); stop(); selectClip(c);
+                  e.currentTarget.focus(); e.currentTarget.setPointerCapture(e.pointerId);
+                  const lane = e.currentTarget.closest('.multitrack-lane')!;
+                  const scroll = e.currentTarget.closest('.multitrack-scroll') as HTMLElement;
+                  trimDrag.current = { value, next: value, id: c.id, edge, sourceDuration, x: e.clientX, pixelsPerSecond: lane.getBoundingClientRect().width / scale, scroll, scrollLeft: scroll.scrollLeft };
+                }} onPointerMove={e => {
+                  const drag = trimDrag.current;
+                  if (!drag) return;
+                  const delta = (e.clientX - drag.x + drag.scroll.scrollLeft - drag.scrollLeft) / drag.pixelsPerSecond;
+                  drag.next = Timeline.trimEdge(drag.value, drag.id, drag.edge, Math.round(delta * 100) / 100, drag.sourceDuration);
+                  setTrimPreview(drag.next);
+                }} onPointerUp={() => finishTrim(true)} onPointerCancel={() => finishTrim(false)} onLostPointerCapture={() => finishTrim(false)}
+                onKeyDown={e => {
+                  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+                  e.preventDefault(); selectClip(c);
+                  edit(Timeline.trimEdge(value, c.id, edge, (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 0.1 : 0.01), audioSources.get(Timeline.sourceKey(c))?.duration ?? 0));
+                }} />)}
+            </HStack>)}
             <i className="multitrack-playhead" aria-hidden="true" style={{ left: `${Math.min(time, scale) / scale * 100}%` }} />
             <HStack className="multitrack-add-audio" gap={0} style={{ left: `calc(${Math.max(0, ...track.clips.map(c => c.start + c.duration)) / scale * 100}% + var(--spacing-2))` }}>
               <DropdownMenu className="timeline-audio-menu" presentation="popover" placement="above" alignment="start" hasChevron={false} menuWidth="max-content"
