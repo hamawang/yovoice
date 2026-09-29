@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -16,6 +17,9 @@ import (
 func TestShutdownDrainsResponses(t *testing.T) {
 	root := t.TempDir()
 	binary := filepath.Join(root, "service")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
 	if output, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
 		t.Fatalf("构建服务失败：%v\n%s", err, output)
 	}
