@@ -148,7 +148,7 @@ func TestSubtitleMappingAndGeneration(t *testing.T) {
 	// 仅重试指定台词，原工程正文和其他音频不变；旧保位设置也统一使用顺延。
 	d.Timeline.RegenerateMode = "preserve"
 	before := len(state.History)
-	must(t, w.generateAudio(d, "", "", "", first.Segment.CueID))
+	must(t, w.generateAudio(d, "", first.Segment.CueID, "clip"))
 	w.mu.Lock()
 	done = w.done
 	w.mu.Unlock()

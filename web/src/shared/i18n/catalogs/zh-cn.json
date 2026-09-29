@@ -1979,12 +1979,6 @@
   "@yovoice.timeline.failedCue": {
     "defaultMessage": "生成失败"
   },
-  "@yovoice.timeline.generatePending": {
-    "defaultMessage": "生成待处理台词"
-  },
-  "@yovoice.timeline.follow": {
-    "defaultMessage": "跟随播放"
-  },
   "@yovoice.timeline.package": {
     "defaultMessage": "导出工程"
   },

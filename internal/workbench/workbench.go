@@ -628,25 +628,9 @@ func (w *Workbench) importVoice(ctx context.Context, path, name, referenceText, 
 }
 func (w *Workbench) generate(d Draft) error { return w.generateAudio(d, "", "", "") }
 
-func (w *Workbench) generateAudio(d Draft, previewID, cueID, clipID string, pending ...string) error {
+func (w *Workbench) generateAudio(d Draft, previewID, cueID, clipID string) error {
 	d.ensureCueIDs()
 	original := d
-	if len(pending) > 0 {
-		if d.Subtitles == nil || len(pending) > 2000 {
-			return Err(MsgErrSubtitleInvalid, nil)
-		}
-		doc := *d.Subtitles
-		doc.Cues = slices.DeleteFunc(append([]SubtitleCue{}, doc.Cues...), func(c SubtitleCue) bool { return !slices.Contains(pending, c.ID) })
-		if len(doc.Cues) != len(pending) {
-			return Err(MsgErrSubtitleInvalid, nil)
-		}
-		texts := make([]string, len(doc.Cues))
-		for i, c := range doc.Cues {
-			texts[i] = c.Text
-		}
-		d.Text = strings.Join(texts, "\n")
-		d.Subtitles = &doc
-	}
 	if cueID != "" {
 		if d.Subtitles == nil {
 			return Err(MsgErrSubtitleInvalid, nil)
@@ -682,34 +666,6 @@ func (w *Workbench) generateAudio(d Draft, previewID, cueID, clipID string, pend
 	parts, e := w.prepareSynthesis(d, s)
 	if e != nil {
 		return e
-	}
-	if len(pending) > 0 && original.Timeline != nil {
-		cueByGeneration := map[string]string{}
-		for _, g := range s.History {
-			if g.Segment != nil {
-				cueByGeneration[g.ID] = g.Segment.CueID
-			}
-		}
-		type target struct {
-			id     string
-			locked bool
-		}
-		targets := map[string]target{}
-		for _, lane := range original.Timeline.Tracks {
-			for _, clip := range lane.Clips {
-				id := cueByGeneration[clip.GenerationID]
-				if id != "" && targets[id].id == "" {
-					targets[id] = target{clip.ID, lane.Locked}
-				}
-			}
-		}
-		for i := range parts {
-			target := targets[parts[i].segment.CueID]
-			if target.locked {
-				return Err(MsgErrTimelineInvalid, nil)
-			}
-			parts[i].segment.TargetClipID = target.id
-		}
 	}
 
 	if s.RuntimePath == nil || value(s.RuntimeBackend) != s.Preferences.Backend {
@@ -802,22 +758,14 @@ func (w *Workbench) Call(method string, data json.RawMessage) (any, error) {
 			return nil, Err(MsgErrDraftIDInvalid, nil)
 		}
 		err = w.Store.Update(func(s *State) { s.Drafts = slices.DeleteFunc(s.Drafts, func(d Draft) bool { return d.ID == p.ID }) }, true)
-	case "generation.cue", "generation.pending":
+	case "generation.cue":
 		var input struct {
-			Draft  Draft    `json:"draft"`
-			CueID  string   `json:"cueId"`
-			CueIDs []string `json:"cueIds"`
-			ClipID string   `json:"clipId"`
+			Draft  Draft  `json:"draft"`
+			CueID  string `json:"cueId"`
+			ClipID string `json:"clipId"`
 		}
 		if err = json.Unmarshal(data, &input); err != nil {
 			return nil, err
-		}
-		if method == "generation.pending" {
-			if len(input.CueIDs) == 0 {
-				return nil, Err(MsgErrSubtitleInvalid, nil)
-			}
-			err = w.generateAudio(input.Draft, "", "", "", input.CueIDs...)
-			break
 		}
 		if input.CueID == "" {
 			return nil, Err(MsgErrSubtitleInvalid, nil)

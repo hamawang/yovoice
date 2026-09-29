@@ -1979,12 +1979,6 @@
   "@yovoice.timeline.failedCue": {
     "defaultMessage": "Generation failed"
   },
-  "@yovoice.timeline.generatePending": {
-    "defaultMessage": "Generate pending lines"
-  },
-  "@yovoice.timeline.follow": {
-    "defaultMessage": "Follow playback"
-  },
   "@yovoice.timeline.package": {
     "defaultMessage": "Export project"
   },

@@ -264,3 +264,29 @@ test('磁吸按钮状态清晰，拖动主体时后续片段同步前后移动',
   await expect(trim).toHaveCSS('box-shadow', 'none');
   await page.mouse.up();
 });
+
+test('移除待处理生成和跟随开关，滚动后播放仍自动跟随台词', async ({ page }) => {
+  await page.goto('/'); const state = emptyState(), draft = state.drafts[0];
+  draft.kind = 'story'; draft.text = '第一句\n第二句';
+  draft.subtitles = { speakers: [{ id: 's', sourceName: '旁白' }], cues: [
+    { id: 'c0', speakerId: 's', text: '第一句', start: 0, end: 1000 },
+    { id: 'c1', speakerId: 's', text: '第二句', start: 1000, end: 2000 },
+  ] };
+  draft.timeline = { acceptedGenerations: ['g0', 'g1'], tracks: [{ id: 't', name: '对白', muted: false, clips: [0, 1].map(i => ({ id: `a${i}`, generationId: `g${i}`, start: i, offset: 0, duration: 1 })) }] };
+  state.history = [0, 1].map(i => ({ id: `g${i}`, title: `台词 ${i}`, fileName: 'g.wav', duration: 2, createdAt: '', settings: draft, segment: { batchId: 't', cueId: `c${i}`, speakerId: 's', speakerName: '旁白', index: i } }));
+  await seedTimeline(page, state);
+  await expect(page.getByRole('button', { name: '生成待处理台词', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '跟随播放', exact: true })).toHaveCount(0);
+  await page.evaluate(() => {
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = function(options) {
+      if (this.dataset.cueIndex) this.dataset.followed = 'true';
+      original.call(this, options);
+    };
+  });
+  await page.getByRole('button', { name: '播放', exact: true }).click();
+  await expect(page.locator('[data-cue-index="0"]')).toHaveAttribute('data-followed', 'true');
+  await page.locator('.subtitle-editor').dispatchEvent('wheel', { deltaY: -100 });
+  await expect(page.locator('[data-cue-index="1"]')).toHaveAttribute('data-followed', 'true');
+  await expect(page.getByRole('button', { name: '播放', exact: true })).toBeVisible();
+});
