@@ -76,14 +76,17 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
   const operation = useRef(0);
   const abort = useRef<AbortController | null>(null);
   const duration = Timeline.duration(value);
-  // 剪辑过程中只扩展范围，缩短片段不改变像素与时间的比例。
+  // 100% 默认显示十秒，长工程横向延展；增加片段不压缩已有片段。
   const [extent, setExtent] = useState(() => Math.max(duration * 1.2 + 2, 10));
   const scale = extent;
+  const fitExtent = Math.max(duration * 1.2 + 2, 10);
+  const minZoom = 10 / fitExtent;
+  const fitAll = () => { zoomAnchor.current = null; setExtent(fitExtent); setZoom(minZoom); if (scrollRef.current) scrollRef.current.scrollLeft = 0; };
   useEffect(() => { if (duration > extent - 1) setExtent(Math.max(duration * 1.2 + 2, 10)); }, [duration]);
   const zoomTo = (next: number, anchorX?: number) => {
     const ruler = rulerRef.current?.getBoundingClientRect(), scroll = scrollRef.current?.getBoundingClientRect();
     if (ruler && scroll) { const x = anchorX ?? scroll.left + scroll.width / 2; zoomAnchor.current = { time: (x - ruler.left) / ruler.width * scale, x }; }
-    setZoom(Math.max(1, Math.min(32, next)));
+    setZoom(Math.max(minZoom, Math.min(32, next)));
   };
   useLayoutEffect(() => {
     const anchor = zoomAnchor.current, ruler = rulerRef.current, scroll = scrollRef.current;
@@ -91,8 +94,19 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
   }, [zoom, scale]);
   useEffect(() => { const element = scrollRef.current; if (!element) return; const wheel = (e: WheelEvent) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); zoomTo(zoom * (e.deltaY < 0 ? 1.25 : 0.8), e.clientX); } }; element.addEventListener('wheel', wheel, { passive: false }); return () => element.removeEventListener('wheel', wheel); });
   const [rulerWidth, setRulerWidth] = useState(1000);
-  useEffect(() => { const element = rulerRef.current; if (!element) return; const observer = new ResizeObserver(() => setRulerWidth(element.clientWidth)); observer.observe(element); return () => observer.disconnect(); }, []);
+  const [viewport, setViewport] = useState({ left: 0, width: 1000 });
+  useEffect(() => {
+    const ruler = rulerRef.current, scroll = scrollRef.current; if (!ruler || !scroll) return;
+    const measure = () => { setRulerWidth(Math.max(1, ruler.clientWidth)); setViewport({ left: scroll.scrollLeft, width: scroll.clientWidth }); };
+    const observer = new ResizeObserver(measure); observer.observe(ruler); observer.observe(scroll);
+    scroll.addEventListener('scroll', measure, { passive: true }); measure();
+    return () => { observer.disconnect(); scroll.removeEventListener('scroll', measure); };
+  }, []);
   const tickStep = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 30, 60, 120, 300, 600, 1800, 3600, 7200].find(step => step / scale * rulerWidth >= 70) ?? 7200;
+
+  // 标尺只绘制可见区，长工程放大后也不创建成千上万个刻度。
+  const firstTick = Math.max(0, Math.floor(viewport.left / rulerWidth * scale / tickStep) - 1);
+  const tickCount = Math.min(Math.floor(scale / tickStep) - firstTick + 1, Math.ceil(viewport.width / rulerWidth * scale / tickStep) + 3);
 
   const clip = (trimPreview ?? value).tracks.flatMap(track => track.clips).find(c => c.id === selected);
   const audioSources = new Map<string, { title: string; duration: number; fileName: string; segment?: Generation['segment'] }>([
@@ -152,7 +166,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
   };
   const split = () => { let next = value; for (const id of selectedIds) next = Timeline.split(next, id, time); edit(next); };
   const selectionRange = () => { const clips = value.tracks.flatMap(t => t.clips.filter(c => selectedIds.includes(c.id))); return clips.length ? { start: Math.min(...clips.map(c => c.start)), end: Math.max(...clips.map(c => c.start + c.duration)) } : undefined; };
-  const fitSelection = () => { const target = range ?? selectionRange(); if (!target) return; zoomAnchor.current = { time: target.start, x: (scrollRef.current?.getBoundingClientRect().left ?? 0) + (scrollRef.current?.querySelector('.multitrack-label')?.clientWidth ?? 0) }; setZoom(Math.min(32, Math.max(1, scale / (target.end - target.start) * 0.8))); };
+  const fitSelection = () => { const target = range ?? selectionRange(); if (!target) return; zoomAnchor.current = { time: target.start, x: (scrollRef.current?.getBoundingClientRect().left ?? 0) + (scrollRef.current?.querySelector('.multitrack-label')?.clientWidth ?? 0) }; setZoom(Math.min(32, Math.max(minZoom, 10 / (target.end - target.start) * 0.8))); };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (historyBlocked || event.defaultPrevented || event.isComposing || event.altKey) return;
@@ -339,7 +353,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
       { label: t('@yovoice.timeline.contextPlay'), isDisabled: !selectedIds.length, onClick: () => { const r = selectionRange(); if (r) void play({ start: Math.max(0, r.start - 1), end: Math.min(duration, r.end + 1) }); } },
       { label: t('@yovoice.timeline.snap'), onClick: () => setSnap(!snap) },
       { label: t('@yovoice.timeline.loop'), isDisabled: !range && !selectedIds.length, onClick: () => { if (!range) setRange(selectionRange()); setLoop(!loop); } },
-      { label: t('@yovoice.player.zoomFit'), onClick: () => { setExtent(Math.max(duration * 1.2 + 2, 10)); setZoom(1); if (scrollRef.current) scrollRef.current.scrollLeft = 0; } },
+      { label: t('@yovoice.player.zoomFit'), onClick: fitAll },
       { label: t('@yovoice.timeline.fitSelection'), isDisabled: !range && !selectedIds.length, onClick: fitSelection },
       ...(isDesktop ? [{ label: t('@yovoice.timeline.package'), onClick: () => void exportProject().catch(e => onError((e as Error).message)) }] : []),
       { label: t('@yovoice.timeline.balance'), isDisabled: !duration, onClick: () => void (async () => { try { const audio = context.current ??= new AudioContext(); for (const c of value.tracks.flatMap(t => t.clips)) await load(Timeline.sourceKey(c), audio); edit(Timeline.balance(value, history, buffers.current)); } catch (e) { onError((e as Error).message); } })() },
@@ -388,7 +402,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
         <Selector label={t('@yovoice.timeline.regeneratePlacement')} value={value.regenerateMode ?? 'ripple'} onChange={mode => edit({ ...value, regenerateMode: mode as 'ripple' | 'preserve' })} options={[{ value: 'ripple', label: t('@yovoice.timeline.ripple') }, { value: 'preserve', label: t('@yovoice.timeline.preserve') }]} />
         <HStack gap={1}>{[0, 0.2, 0.5, 1].map(seconds => <Button key={seconds} size="sm" label={`${seconds}s`} aria-label={`${t('@yovoice.timeline.gap')} ${seconds}s`} isDisabled={!editable} onClick={() => edit(Timeline.gap(value, selected, seconds))} />)}</HStack>
       </VStack>}><Button size="sm" variant="ghost" isIconOnly icon={<SlidersHorizontal />} label={t('@yovoice.timeline.options')} /></Popover>
-      <TrackZoom value={zoom} change={next => { if (next === 1) { setExtent(Math.max(duration * 1.2 + 2, 10)); if (scrollRef.current) scrollRef.current.scrollLeft = 0; setZoom(1); } else zoomTo(next); }} disabled={!duration} max={32} />
+      <TrackZoom value={zoom} change={zoomTo} fit={fitAll} disabled={!duration} min={minZoom} max={32} />
     </PlaybackToolbar>
     {exportOpen ? <AppDialog title={t('@yovoice.timeline.export')} busy={exporting} error={exportError.startsWith('@yovoice.') ? t(exportError) : exportError} onClose={() => setExportOpen(false)} actions={<Button label={t('@yovoice.timeline.exportConfirm')} variant="primary" isLoading={exporting} isDisabled={!exportName.trim()} onClick={async () => {
       setExporting(true); setExportError('');
@@ -412,7 +426,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
     }} onPointerDown={e => {
       if (!(e.target as Element).closest('button, input, [role="slider"], [role="menuitem"]')) { setSelected(''); setSelection([]); }
     }}>
-      <VStack className="multitrack-content" gap={0} style={{ width: `${zoom * 100}%` }}>
+      <VStack className="multitrack-content" gap={0} style={{ minWidth: '100%', width: `calc(var(--audio-label-width) + (100% - var(--audio-label-width)) * ${zoom * scale / 10})` }}>
         <HStack gap={0} className="multitrack-ruler-row">
           <small className="multitrack-label">{t('@yovoice.timeline.tracks')}</small>
           <VStack ref={rulerRef} className="multitrack-ruler" gap={0} onPointerDown={e => {
@@ -421,7 +435,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
             seek(start); setRange(undefined);
             beginGesture(e, dx => { const end = Math.max(0, Math.min(scale, start + dx / rect.width * scale)); setRange({ start: Math.min(start, end), end: Math.max(start, end) }); });
           }}>
-            <HStack gap={0} aria-hidden="true">{Array.from({ length: Math.floor(scale / tickStep) + 1 }, (_, i) => <small className="timeline-tick" style={{ left: `${i * tickStep / scale * 100}%` }} key={i}>{Number((i * tickStep).toFixed(2))}s</small>)}</HStack>
+            <HStack gap={0} aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>{Array.from({ length: Math.max(0, tickCount) }, (_, offset) => { const i = firstTick + offset; return <small className="timeline-tick" style={{ left: `${i * tickStep / scale * 100}%` }} key={i}>{Number((i * tickStep).toFixed(2))}s</small>; })}</HStack>
             {range ? <i className="timeline-range" style={{ left: `${range.start / scale * 100}%`, width: `${(range.end - range.start) / scale * 100}%` }} /> : null}
             {(value.markers ?? []).map(m => <Button key={m.id} className="timeline-marker" style={{ left: `${m.time / scale * 100}%` }} size="sm" isIconOnly variant="ghost" icon={<Flag />} label={m.name} tooltip={m.name} onClick={() => { seek(m.time); const next = (value.markers ?? []).filter(v => v.time > m.time).sort((a, b) => a.time - b.time)[0]; setRange({ start: m.time, end: next?.time ?? Math.max(m.time + 0.01, duration) }); }} onDoubleClick={() => { setMarkerId(m.id); setMarkerName(m.name); setMarkerOpen(true); }} />)}
             <input type="range" aria-label={t('@yovoice.player.progress')} min={0} max={scale} step={0.01} value={Math.min(time, scale)} tabIndex={0} onChange={e => { setRange(undefined); seek(Number(e.target.value)); }} />

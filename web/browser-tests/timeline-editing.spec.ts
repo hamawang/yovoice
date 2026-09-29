@@ -1,6 +1,15 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { Timeline } from '../src/features/media/timeline';
-import { emptyState, cueAudioStatus, type AudioTimeline } from '../src/shared/workbench';
+import { emptyState, cueAudioStatus, type AudioTimeline, type State } from '../src/shared/workbench';
+
+async function seedTimeline(page: Page, state: State) {
+  await page.evaluate(async state => {
+    localStorage.setItem('voice-workbench-v1', JSON.stringify(state));
+    const path = '/src/shared/lib/sound.ts'; const { encodeWav } = await import(/* @vite-ignore */ path);
+    const audio = new AudioBuffer({ length: 48000, sampleRate: 24000, numberOfChannels: 1 }); audio.getChannelData(0).fill(.2);
+    await new Promise<void>((resolve, reject) => { const req = indexedDB.open('voice-workbench-audio', 1); req.onupgradeneeded = () => req.result.createObjectStore('audio'); req.onerror = () => reject(req.error); req.onsuccess = () => { const db = req.result; const tx = db.transaction('audio', 'readwrite'); tx.objectStore('audio').put(encodeWav(audio), 'g.wav'); tx.oncomplete = () => { db.close(); resolve(); }; }; });
+  }, state); await page.reload();
+}
 
 test('多选保持相对位置，锁轨保护，波纹删除不影响其他轨', () => {
   const value: AudioTimeline = { tracks: [
@@ -56,12 +65,7 @@ test('菜单、多选快捷键、锁轨与标尺循环选区', async ({ page }, 
   d.timeline = { tracks: [{ id: 't', name: '对白', muted: false, clips: [{ id: 'a', generationId: 'g', start: 0, offset: 0, duration: 2 }, { id: 'b', generationId: 'g2', start: 3, offset: 0, duration: 2 }] }] };
   state.history = ['g', 'g2'].map((id, index) => ({ id, title: `台词 ${index + 1}`, fileName: 'g.wav', duration: 2, createdAt: '', settings: d, segment: { batchId: 't', cueId: `c${index + 1}`, speakerId: 's', speakerName: '旁白', index } }));
   d.timeline.acceptedGenerations = ['g', 'g2'];
-  await page.evaluate(async state => {
-    localStorage.setItem('voice-workbench-v1', JSON.stringify(state));
-    const path = '/src/shared/lib/sound.ts'; const { encodeWav } = await import(/* @vite-ignore */ path);
-    const audio = new AudioBuffer({ length: 48000, sampleRate: 24000, numberOfChannels: 1 }); audio.getChannelData(0).fill(.2);
-    await new Promise<void>((resolve, reject) => { const req = indexedDB.open('voice-workbench-audio', 1); req.onupgradeneeded = () => req.result.createObjectStore('audio'); req.onerror = () => reject(req.error); req.onsuccess = () => { const db = req.result; const tx = db.transaction('audio', 'readwrite'); tx.objectStore('audio').put(encodeWav(audio), 'g.wav'); tx.oncomplete = () => { db.close(); resolve(); }; }; });
-  }, state); await page.reload();
+  await seedTimeline(page, state);
   await page.locator('.multitrack-clip').first().click();
   const fade = (await page.getByRole('button', { name: '淡入', exact: true }).boundingBox())!;
   await page.mouse.move(fade.x + fade.width / 2, fade.y + fade.height / 2); await page.mouse.down(); await page.mouse.move(fade.x + 40, fade.y + fade.height / 2, { steps: 5 }); await page.mouse.up();
@@ -109,4 +113,25 @@ test('菜单、多选快捷键、锁轨与标尺循环选区', async ({ page }, 
   await page.mouse.up(); await page.keyboard.up('Alt');
   await page.keyboard.press('Meta+z');
   await expect.poll(async () => page.locator('[data-clip-id="a"]').evaluate(e => e.style.left)).toBe('0%');
+});
+
+test('长故事默认展开并横向滚动，显示全部仅由用户主动触发', async ({ page }, testInfo) => {
+  await page.goto('/'); const state = emptyState(), draft = state.drafts[0];
+  draft.timeline = { tracks: [{ id: 't', name: '对白', muted: false, clips: Array.from({ length: 83 }, (_, i) => ({ id: `clip-${i}`, generationId: 'g', start: i * 2, offset: 0, duration: 2 })) }] };
+  state.history = [{ id: 'g', title: '悟空，一棒打下，妖精脱了躯壳逃走。', fileName: 'g.wav', duration: 2, createdAt: '', settings: draft }];
+  await seedTimeline(page, state);
+  const scroll = page.locator('.multitrack-scroll'), first = page.locator('.multitrack-clip').first();
+  const initial = (await first.boundingBox())!;
+  expect(initial.width).toBeGreaterThan(150);
+  await expect.poll(() => scroll.evaluate(e => e.scrollWidth / e.clientWidth)).toBeGreaterThan(10);
+  await expect(page.getByRole('button', { name: '适应完整音轨', exact: true })).toHaveText('100%');
+  await page.screenshot({ path: testInfo.outputPath('long-story.png') });
+  await scroll.evaluate(e => { e.scrollLeft = e.scrollWidth - e.clientWidth; });
+  await expect.poll(async () => Number((await page.locator('.timeline-tick').first().textContent())!.replace('s', ''))).toBeGreaterThan(140);
+  await expect(page.locator('.timeline-tick')).not.toHaveCount(0);
+  expect(await page.locator('.timeline-tick').count()).toBeLessThan(30);
+  expect((await first.boundingBox())!.width).toBeCloseTo(initial.width, 1);
+  await page.getByRole('button', { name: '适应完整音轨', exact: true }).click();
+  await expect.poll(() => scroll.evaluate(e => e.scrollWidth - e.clientWidth)).toBeLessThan(2);
+  expect((await first.boundingBox())!.width).toBeLessThan(30);
 });

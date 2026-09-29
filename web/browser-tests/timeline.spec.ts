@@ -286,7 +286,10 @@ test('音轨末尾上传独立素材，裁剪后保存重载与导出', async ({
   expect(Math.abs(trigger.y + trigger.height / 2 - end.y - end.height / 2)).toBeLessThan(2);
   await clip.click();
   await expect(page.getByRole('button', { name: '重新生成片段', exact: true })).toBeDisabled();
+  // 跨越一分钟的裁剪先主动缩放到完整音轨。
+  await page.getByRole('button', { name: '适应完整音轨', exact: true }).click();
   await dragEdge(page, clip, 'end', -63.5, 65);
+  await page.getByRole('button', { name: '适应完整音轨', exact: true }).click();
   await dragEdge(page, clip, 'start', 0.5, 1.5);
   const undo = page.getByRole('button', { name: '撤销', exact: true });
   const redo = page.getByRole('button', { name: '重做', exact: true });
