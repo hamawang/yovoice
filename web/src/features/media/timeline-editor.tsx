@@ -483,7 +483,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
                 const delta = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
                 if (destination) edit(Timeline.moveGroup(value, selectedIds.includes(c.id) ? selectedIds : [c.id], delta * (e.shiftKey ? 0.1 : 0.01), value.tracks.indexOf(destination) - lane));
               }} />
-              {(['start', 'end'] as const).map(edge => <Button key={edge} size="sm" variant="ghost" isIconOnly icon={<GripVertical />} className="multitrack-trim" data-edge={edge}
+              {(['start', 'end'] as const).map(edge => <Button key={edge} size="sm" variant="ghost" isIconOnly className="multitrack-trim" data-edge={edge}
                 label={t(edge === 'start' ? '@yovoice.timeline.trimStart' : '@yovoice.timeline.trimEnd')} role="slider" aria-orientation="horizontal"
                 aria-valuemin={edge === 'start' ? Math.max(0, c.offset - c.start) : c.offset + 0.01}
                 aria-valuemax={edge === 'start' ? c.offset + c.duration - 0.01 : audioSources.get(Timeline.sourceKey(c))?.duration ?? c.offset + c.duration}
@@ -504,12 +504,15 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
                   edit(Timeline.trimEdge(value, c.id, edge, (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 0.1 : 0.01), audioSources.get(Timeline.sourceKey(c))?.duration ?? 0));
                 }} />)}
               {selectedIds.includes(c.id) ? <>
-                <Button size="sm" variant="ghost" className="clip-gain" label={`${t('@yovoice.timeline.volume')} ${(c.gainDb ?? 0).toFixed(1)} dB`} isDisabled={!!track.locked} style={{ top: `${(12 - (c.gainDb ?? 0)) / 72 * 100}%` }} onPointerDown={e => {
+                <Button size="sm" variant="ghost" isIconOnly className="clip-gain" data-value={`${(c.gainDb ?? 0).toFixed(1)} dB`} label={`${t('@yovoice.timeline.volume')} ${(c.gainDb ?? 0).toFixed(1)} dB`} isDisabled={!!track.locked} style={{ top: `${55 + (12 - (c.gainDb ?? 0)) / 72 * 35}%` }} onPointerDown={e => {
                   beginGesture(e, (_dx, dy) => preview(patchClip(value, c.id, { gainDb: Math.max(-60, Math.min(12, (c.gainDb ?? 0) - dy / 2)) })));
                 }} onKeyDown={e => { if (['ArrowUp', 'ArrowDown'].includes(e.key)) { e.preventDefault(); edit(patchClip(value, c.id, { gainDb: Math.max(-60, Math.min(12, (c.gainDb ?? 0) + (e.key === 'ArrowUp' ? 1 : -1))) })); } }} />
-                {(['fadeIn', 'fadeOut'] as const).map(fade => <Button key={fade} size="sm" variant="secondary" className="clip-fade" data-edge={fade} label={t(`@yovoice.timeline.${fade}`)} isDisabled={!!track.locked} style={{ [fade === 'fadeIn' ? 'left' : 'right']: `${Math.min(c.duration, c[fade] ?? 0) / c.duration * 100}%` }} onPointerDown={e => { const pps = e.currentTarget.closest('.multitrack-lane')!.getBoundingClientRect().width / scale; beginGesture(e, dx => preview(patchClip(value, c.id, { [fade]: Math.max(0, Math.min(c.duration, (c[fade] ?? 0) + dx / pps * (fade === 'fadeIn' ? 1 : -1))) }))); }} onKeyDown={e => { if (['ArrowLeft', 'ArrowRight'].includes(e.key)) { e.preventDefault(); edit(patchClip(value, c.id, { [fade]: Math.max(0, Math.min(c.duration, (c[fade] ?? 0) + (e.key === 'ArrowRight' ? 0.1 : -0.1) * (fade === 'fadeIn' ? 1 : -1))) })); } }} />)}
+                {(['fadeIn', 'fadeOut'] as const).map(fade => <Button key={fade} size="sm" variant="ghost" isIconOnly className="clip-fade" data-edge={fade} data-value={`${(c[fade] ?? 0).toFixed(2)} s`} label={t(`@yovoice.timeline.${fade}`)} isDisabled={!!track.locked} style={{ [fade === 'fadeIn' ? 'left' : 'right']: `clamp(var(--spacing-2), ${Math.min(c.duration, c[fade] ?? 0) / c.duration * 100}%, calc(100% - var(--spacing-2)))` }} onPointerDown={e => { const pps = e.currentTarget.closest('.multitrack-lane')!.getBoundingClientRect().width / scale; beginGesture(e, dx => preview(patchClip(value, c.id, { [fade]: Math.max(0, Math.min(c.duration, (c[fade] ?? 0) + dx / pps * (fade === 'fadeIn' ? 1 : -1))) }))); }} onKeyDown={e => { if (['ArrowLeft', 'ArrowRight'].includes(e.key)) { e.preventDefault(); edit(patchClip(value, c.id, { [fade]: Math.max(0, Math.min(c.duration, (c[fade] ?? 0) + (e.key === 'ArrowRight' ? 0.1 : -0.1) * (fade === 'fadeIn' ? 1 : -1))) })); } }} />)}
               </> : null}
-              {(c.fadeIn || c.fadeOut) ? <svg className="clip-fade-curve" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points={`0,100 ${Math.min(100, (c.fadeIn ?? 0) / c.duration * 100)},0 ${Math.max(0, 100 - (c.fadeOut ?? 0) / c.duration * 100)},0 100,100`} /></svg> : null}
+              {(c.fadeIn || c.fadeOut) ? <svg className="clip-fade-curve" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                {c.fadeIn ? <><polygon points={`0,0 ${Math.min(100, c.fadeIn / c.duration * 100)},0 0,100`} /><path d={`M 0 100 L ${Math.min(100, c.fadeIn / c.duration * 100)} 0`} /></> : null}
+                {c.fadeOut ? <><polygon points={`${Math.max(0, 100 - c.fadeOut / c.duration * 100)},0 100,0 100,100`} /><path d={`M ${Math.max(0, 100 - c.fadeOut / c.duration * 100)} 0 L 100 100`} /></> : null}
+              </svg> : null}
             </HStack>)}
             {[...track.clips].sort((a, b) => a.start - b.start).map((c, i, clips) => {
               const end = Math.max(0, ...clips.slice(0, i).map(v => v.start + v.duration)), gap = c.start - end;

@@ -157,9 +157,10 @@
   .timeline-audio-menu svg, .timeline-audio-button svg { width: var(--spacing-4); height: var(--spacing-4); stroke-width: 1.5; }
   .timeline-history-list { max-height: calc(var(--spacing-16) * 5); overflow-y: auto; }
   .multitrack-region { position: absolute; top: var(--spacing-1); height: var(--spacing-10); min-width: 0; }
-  .multitrack-clip { width: 100%; height: 100%; min-width: 0; overflow: hidden; justify-content: start; cursor: grab; border-color: var(--color-border); }
-  .multitrack-clip[aria-pressed="true"] { outline: var(--border-width) solid var(--color-text-primary); outline-offset: calc(var(--border-width) * -1); background: var(--color-overlay-hover); }
-  .multitrack-clip .clip-waveform { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.25; stroke: var(--color-text-secondary); pointer-events: none; }
+  .multitrack-clip { width: 100%; height: 100%; min-width: 0; overflow: hidden; justify-content: start; cursor: grab; border-color: var(--color-border); border-radius: var(--radius-inner); padding-block: 0 var(--spacing-5); font-size: var(--font-size-xs); }
+  .multitrack-clip[aria-pressed="true"] { outline: var(--border-width) solid var(--app-wave); outline-offset: calc(var(--border-width) * -1); background: color-mix(in srgb, var(--app-wave) 8%, var(--color-background-surface)); }
+  .multitrack-clip .subtitle-avatar { width: var(--spacing-4); height: var(--spacing-4); flex-shrink: 0; }
+  .multitrack-clip .clip-waveform { position: absolute; inset: 50% 0 0; width: 100%; height: 50%; opacity: 0.4; stroke: var(--color-text-secondary); pointer-events: none; }
   .multitrack-trim.astryx-button { position: absolute; top: 0; bottom: 0; width: min(var(--spacing-3), 30%); min-width: 0; height: 100%; padding: 0; border-radius: var(--radius-inner); color: var(--color-text-primary); cursor: ew-resize; touch-action: none; opacity: 0; }
   .multitrack-trim[data-edge="start"] { left: 0; }
   .multitrack-trim[data-edge="end"] { right: 0; }
@@ -412,18 +413,30 @@
 .timeline-marker { position: absolute; inset-block-start: 0; transform: translateX(-50%); z-index: 4; min-height: 0 !important; height: var(--spacing-5) !important; padding: 0 !important; }
 .timeline-marker svg { width: var(--spacing-3); height: var(--spacing-3); }
 .multitrack-lane, .multitrack-clip { touch-action: none; }
-.multitrack-region .clip-gain { position: absolute; inset-inline: var(--spacing-3); height: var(--spacing-2); min-height: 0; padding: 0; border-block-start: var(--border-width) solid var(--color-text-secondary); color: transparent; border-radius: 0; cursor: ns-resize; z-index: 3; }
-.multitrack-region .clip-fade { position: absolute; inset-block-start: 0; height: var(--spacing-2); width: var(--spacing-2); min-height: 0; min-width: 0; padding: 0; border-radius: var(--radius-inner); color: transparent; cursor: ew-resize; z-index: 4; transform: translateX(-50%); }
-.multitrack-region .clip-fade[data-edge="fadeOut"] { transform: translateX(50%); }
-.clip-fade-curve { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.clip-fade-curve polyline { stroke: var(--color-text-secondary); stroke-width: 1; fill: none; vector-effect: non-scaling-stroke; }
+/* 标题和波形分区，控制线只在波形区域出现；视觉拖柄小，命中区域保留。 */
+.multitrack-region .clip-gain { position: absolute; inset-inline: var(--spacing-3); height: var(--spacing-3); min-height: 0; padding: 0; border: none; border-radius: 0; background: transparent; cursor: ns-resize; z-index: 3; transform: translateY(-50%); opacity: 0; }
+.multitrack-region .clip-gain::before { content: ''; position: absolute; inset-inline: 0; top: 50%; border-top: var(--border-width) solid var(--app-wave); }
+.multitrack-region .clip-fade { position: absolute; top: 50%; height: var(--spacing-4); width: var(--spacing-4); min-height: 0; min-width: 0; padding: 0; border: none; border-radius: 0; background: transparent; cursor: ew-resize; z-index: 4; transform: translate(-50%, -50%); opacity: 0; }
+.multitrack-region .clip-fade[data-edge="fadeOut"] { transform: translate(50%, -50%); }
+.multitrack-region .clip-fade::before { content: ''; width: var(--spacing-1-5); height: var(--spacing-1-5); border: var(--border-width) solid var(--app-wave); border-radius: var(--border-width); background: var(--color-background-surface); }
+.multitrack-region:hover .clip-gain, .multitrack-region:hover .clip-fade, .multitrack-region:focus-within .clip-gain, .multitrack-region:focus-within .clip-fade { opacity: 1; }
+.multitrack-region .clip-gain:hover, .multitrack-region .clip-fade:hover { background: transparent; }
+.clip-gain:focus-visible, .clip-fade:focus-visible { outline: var(--border-width) solid var(--app-wave); outline-offset: var(--border-width); }
+.clip-gain::after, .clip-fade::after { content: attr(data-value); display: none; position: absolute; bottom: calc(100% + var(--spacing-1)); padding: var(--spacing-0-5) var(--spacing-1); border-radius: var(--radius-inner); background: var(--color-text-primary); color: var(--color-background-surface); font-size: var(--font-size-xs); line-height: normal; white-space: nowrap; pointer-events: none; }
+.clip-gain:focus::after, .clip-fade:focus::after { display: block; }
+.clip-fade[data-edge="fadeIn"]::after { left: 0; }
+.clip-fade[data-edge="fadeOut"]::after { right: 0; }
+.clip-fade-curve { position: absolute; inset: 50% 0 0; width: 100%; height: 50%; pointer-events: none; }
+.clip-fade-curve polygon { fill: var(--app-wave); opacity: .12; }
+.clip-fade-curve path { stroke: var(--app-wave); stroke-width: 1; fill: none; vector-effect: non-scaling-stroke; opacity: .65; }
+@media (hover: none) { .multitrack-region .clip-gain, .multitrack-region .clip-fade { opacity: 1; } }
 .subtitle-cue[data-playing="true"] { background: var(--color-overlay-hover); border-radius: var(--radius-inner); }
 .cue-audio-status { align-self: center; flex-shrink: 0; width: var(--spacing-2); height: var(--spacing-2); border-radius: 50%; background: var(--color-text-secondary); }
 .cue-audio-status[data-status="failed"] { background: var(--color-text-red); }
 .cue-audio-status[data-status="stale"] { background: var(--color-text-orange); }
 
-.multitrack-trim { overflow: hidden; }
-.multitrack-trim svg { pointer-events: none; }
+.multitrack-trim.astryx-button { top: 50%; height: 50%; overflow: hidden; border: none; background: transparent; }
+.multitrack-trim::before { content: ''; width: var(--spacing-0-5); height: var(--spacing-3); border-radius: var(--radius-full); background: var(--app-wave); }
 
 .multitrack-clip { padding-inline: min(var(--spacing-2), 10%); }
 .timeline-gap { position: absolute; top: var(--spacing-3); width: var(--spacing-2); min-width: 0; padding: 0; height: var(--spacing-6); transform: translateX(-50%); opacity: 0; cursor: ew-resize; overflow: hidden; }

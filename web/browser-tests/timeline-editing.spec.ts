@@ -6,7 +6,8 @@ async function seedTimeline(page: Page, state: State) {
   await page.evaluate(async state => {
     localStorage.setItem('voice-workbench-v1', JSON.stringify(state));
     const path = '/src/shared/lib/sound.ts'; const { encodeWav } = await import(/* @vite-ignore */ path);
-    const audio = new AudioBuffer({ length: 48000, sampleRate: 24000, numberOfChannels: 1 }); audio.getChannelData(0).fill(.2);
+    const audio = new AudioBuffer({ length: 48000, sampleRate: 24000, numberOfChannels: 1 }); const samples = audio.getChannelData(0);
+    for (let i = 0; i < samples.length; i++) samples[i] = Math.sin(i / 35) * (.12 + .5 * Math.sin(i / 2600) ** 2) * Math.sin(Math.PI * i / samples.length);
     await new Promise<void>((resolve, reject) => { const req = indexedDB.open('voice-workbench-audio', 1); req.onupgradeneeded = () => req.result.createObjectStore('audio'); req.onerror = () => reject(req.error); req.onsuccess = () => { const db = req.result; const tx = db.transaction('audio', 'readwrite'); tx.objectStore('audio').put(encodeWav(audio), 'g.wav'); tx.oncomplete = () => { db.close(); resolve(); }; }; });
   }, state); await page.reload();
 }
@@ -70,7 +71,17 @@ test('菜单、多选快捷键、锁轨与标尺循环选区', async ({ page }, 
   const fade = (await page.getByRole('button', { name: '淡入', exact: true }).boundingBox())!;
   await page.mouse.move(fade.x + fade.width / 2, fade.y + fade.height / 2); await page.mouse.down(); await page.mouse.move(fade.x + 40, fade.y + fade.height / 2, { steps: 5 }); await page.mouse.up();
   await expect(page.locator('.clip-fade-curve')).toHaveCount(1);
+  const curve = (await page.locator('.clip-fade-curve').boundingBox())!;
+  const clipBody = (await page.locator('.multitrack-clip').first().boundingBox())!;
+  // 淡化区域只覆盖下半部波形，不穿过标题；拖柄保留独立命中范围。
+  expect(curve.y).toBeGreaterThanOrEqual(clipBody.y + clipBody.height / 2 - 1);
+  expect(fade.width).toBeGreaterThanOrEqual(16);
+  await page.locator('.multitrack').screenshot({ path: testInfo.outputPath('clip-controls.png') });
   await page.keyboard.press('Meta+z'); await expect(page.locator('.clip-fade-curve')).toHaveCount(0);
+  await page.locator('.clip-gain').press('ArrowUp');
+  await expect(page.locator('.clip-gain')).toHaveAttribute('data-value', '1.0 dB');
+  await page.keyboard.press('Meta+z');
+  await expect(page.locator('.clip-gain')).toHaveAttribute('data-value', '0.0 dB');
   await page.locator('.multitrack-clip').first().click(); await page.keyboard.press('Escape');
   await expect(page.locator('.multitrack-region[data-selected="true"]')).toHaveCount(0);
   await page.locator('[data-cue-index="0"] textarea').click();
