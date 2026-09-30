@@ -60,14 +60,11 @@ func (w *Workbench) ExportProject(id, path string) error {
 		}
 	}
 	collect := func(d Draft) {
-		settings := []SynthesisSettings{d.SynthesisSettings}
+		settings := d.allSettings()
 		characters[d.CharacterID] = true
 		if d.Subtitles != nil {
 			for _, s := range d.Subtitles.Speakers {
 				characters[s.CharacterID] = true
-				if s.Settings != nil {
-					settings = append(settings, *s.Settings)
-				}
 			}
 		}
 		for _, s := range settings {
@@ -86,6 +83,10 @@ func (w *Workbench) ExportProject(id, path string) error {
 	for _, c := range state.Characters {
 		if characters[c.ID] {
 			pack.Characters = append(pack.Characters, c)
+			for _, p := range c.Performances {
+				voices[value(p.Settings.VoiceID)] = true
+				voices[value(p.Settings.EmotionVoiceID)] = true
+			}
 			voices[value(c.Settings.VoiceID)] = true
 			voices[value(c.Settings.EmotionVoiceID)] = true
 			if c.Preview != nil {
@@ -314,10 +315,22 @@ func (w *Workbench) ImportProject(path string) (Draft, error) {
 		if err := remapSettings(&d.SynthesisSettings); err != nil {
 			return err
 		}
+		if d.Performance != nil {
+			if err := remapSettings(&d.Performance.Settings); err != nil {
+				return err
+			}
+		}
 		d.CharacterID = ids[d.CharacterID]
 		// 外部作品引用的源音频也归入导入副本，不能污染原作品的版本列表。
 		d.ID = pack.Draft.ID
 		if d.Subtitles != nil {
+			for i := range d.Subtitles.Cues {
+				if p := d.Subtitles.Cues[i].Performance; p != nil {
+					if err := remapSettings(&p.Settings); err != nil {
+						return err
+					}
+				}
+			}
 			for i := range d.Subtitles.Speakers {
 				s := &d.Subtitles.Speakers[i]
 				s.CharacterID = ids[s.CharacterID]
@@ -342,6 +355,14 @@ func (w *Workbench) ImportProject(path string) (Draft, error) {
 	for i := range pack.Characters {
 		c := &pack.Characters[i]
 		c.ID = ids[c.ID]
+		if len(c.Performances) > 32 {
+			return Draft{}, bad
+		}
+		for j := range c.Performances {
+			if err = remapSettings(&c.Performances[j].Settings); err != nil {
+				return Draft{}, err
+			}
+		}
 		if err = remapSettings(&c.Settings); err != nil {
 			return Draft{}, err
 		}

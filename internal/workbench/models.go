@@ -64,12 +64,19 @@ type SubtitleSpeaker struct {
 	CharacterID string             `json:"characterId,omitempty"`
 	Settings    *SynthesisSettings `json:"settings,omitempty"`
 }
+type CharacterPerformance struct {
+	ID       string            `json:"id"`
+	Name     string            `json:"name"`
+	Settings SynthesisSettings `json:"settings"`
+}
+
 type SubtitleCue struct {
-	ID        string `json:"id,omitempty"`
-	Start     int64  `json:"start"`
-	End       int64  `json:"end"`
-	Text      string `json:"text"`
-	SpeakerID string `json:"speakerId"`
+	Performance *CharacterPerformance `json:"performance,omitempty"`
+	ID          string                `json:"id,omitempty"`
+	Start       int64                 `json:"start"`
+	End         int64                 `json:"end"`
+	Text        string                `json:"text"`
+	SpeakerID   string                `json:"speakerId"`
 }
 type SubtitleDocument struct {
 	Speakers []SubtitleSpeaker `json:"speakers"`
@@ -115,6 +122,7 @@ type AudioTimeline struct {
 	AcceptedGenerations []string      `json:"acceptedGenerations,omitempty"`
 }
 type Draft struct {
+	Performance *CharacterPerformance `json:"performance,omitempty"`
 	SynthesisSettings
 	Kind        string            `json:"kind,omitempty"`
 	CharacterID string            `json:"characterId,omitempty"`
@@ -140,13 +148,14 @@ type CharacterPreview struct {
 }
 
 type Character struct {
-	ID        string            `json:"id"`
-	Name      string            `json:"name"`
-	Settings  SynthesisSettings `json:"settings"`
-	DemoText  string            `json:"demoText"`
-	Preview   *CharacterPreview `json:"preview,omitempty"`
-	CreatedAt time.Time         `json:"createdAt"`
-	UpdatedAt time.Time         `json:"updatedAt"`
+	Performances []CharacterPerformance `json:"performances,omitempty"`
+	ID           string                 `json:"id"`
+	Name         string                 `json:"name"`
+	Settings     SynthesisSettings      `json:"settings"`
+	DemoText     string                 `json:"demoText"`
+	Preview      *CharacterPreview      `json:"preview,omitempty"`
+	CreatedAt    time.Time              `json:"createdAt"`
+	UpdatedAt    time.Time              `json:"updatedAt"`
 }
 
 type Voice struct {

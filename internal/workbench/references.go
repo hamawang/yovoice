@@ -6,21 +6,23 @@ func (s State) voiceUsers(id string) []string {
 		return value(settings.VoiceID) == id || value(settings.EmotionVoiceID) == id
 	}
 	draftUses := func(d Draft) bool {
-		if uses(d.SynthesisSettings) {
-			return true
-		}
-		if d.Subtitles != nil {
-			for _, speaker := range d.Subtitles.Speakers {
-				if speaker.Settings != nil && uses(*speaker.Settings) {
-					return true
-				}
+		for _, settings := range d.allSettings() {
+			if uses(settings) {
+				return true
 			}
 		}
 		return false
 	}
 	var names []string
 	for _, c := range s.Characters {
-		if uses(c.Settings) {
+		used := uses(c.Settings)
+		for _, p := range c.Performances {
+			used = used || uses(p.Settings)
+		}
+		if c.Preview != nil {
+			used = used || uses(c.Preview.Settings)
+		}
+		if used {
 			names = append(names, c.Name)
 		}
 	}
@@ -35,4 +37,25 @@ func (s State) voiceUsers(id string) []string {
 		}
 	}
 	return names
+}
+
+// allSettings 包含台词演绎快照，用于素材引用保护和作品归档。
+func (d Draft) allSettings() []SynthesisSettings {
+	settings := []SynthesisSettings{d.SynthesisSettings}
+	if d.Performance != nil {
+		settings = append(settings, d.Performance.Settings)
+	}
+	if d.Subtitles != nil {
+		for _, s := range d.Subtitles.Speakers {
+			if s.Settings != nil {
+				settings = append(settings, *s.Settings)
+			}
+		}
+		for _, c := range d.Subtitles.Cues {
+			if c.Performance != nil {
+				settings = append(settings, c.Performance.Settings)
+			}
+		}
+	}
+	return settings
 }

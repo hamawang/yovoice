@@ -3,6 +3,8 @@ import { AudioLines, Pencil, Plus, Trash2 } from 'lucide-react';
 import { AppDialog, ConfirmDelete } from '../../shared/ui/app-dialog';
 import { LibraryEmpty, LibraryEntry, LibraryPage } from './library-layout';
 import { Studio } from '../create/studio';
+import { Selector } from '../../shared/selector';
+import { TextInput } from '@astryxdesign/core/TextInput';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack, Layout, LayoutFooter } from '@astryxdesign/core/Layout';
 import { useTranslator } from '@astryxdesign/core/i18n';
@@ -11,11 +13,14 @@ import { Player } from '../media/player';
 const VoicePicker = lazy(() => import('../media/voice-picker').then(module => ({ default: module.VoicePicker })));
 import { call } from '../../shared/lib/client';
 import { formatActivity, formatActivityError, formatCallError } from '../../shared/i18n/format';
-import { stableJSON, previewStale, synthesisSettings, type Character, type Draft, type State, type ModelPackage, type Track } from '../../shared/workbench';
+import { stableJSON, previewStale, performanceSettings, synthesisSettings, type Character, type Draft, type State, type ModelPackage, type Track } from '../../shared/workbench';
 
 export function CharacterEditor({ initial, state, catalog, active = true, close, settings, apply }: { active?: boolean; initial: Character; state: State; catalog: ModelPackage[]; close: (saved?: Character) => void; settings: (modelId?: string) => void; apply?: (saved: Character) => Promise<void> }) {
   const t = useTranslator();
   const [character, setCharacter] = useState(() => structuredClone(initial));
+  const [performanceId, setPerformanceId] = useState('');
+  const selectedPerformance = character.performances?.find(p => p.id === performanceId);
+  const activeSettings = performanceSettings(character.settings, selectedPerformance);
   const [showInspector, setShowInspector] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [choosing, setChoosing] = useState<'voice' | 'emotion' | null>(null);
@@ -27,8 +32,8 @@ export function CharacterEditor({ initial, state, catalog, active = true, close,
   const [temporary, setTemporary] = useState<string[]>([]);
   const busy = state.activity?.status === 'running';
   const editingBusy = saving || requesting || !!pending || (busy && temporary.length > 0);
-  const draft: Draft = { ...character.settings, id: character.id, title: character.name, text: character.demoText };
-  const change = (patch: Partial<Draft>) => setCharacter(c => ({ ...c, settings: synthesisSettings({ ...c.settings, id: c.id, title: c.name, text: c.demoText, ...patch }) }));
+  const draft: Draft = { ...activeSettings, id: character.id, title: character.name, text: character.demoText };
+  const change = (patch: Partial<Draft>) => setCharacter(c => selectedPerformance ? { ...c, performances: c.performances?.map(p => p.id === performanceId ? { ...p, settings: performanceSettings(c.settings, { ...p, settings: { ...activeSettings, ...patch } }) } : p) } : { ...c, settings: synthesisSettings({ ...c.settings, id: c.id, title: c.name, text: c.demoText, ...patch }) });
   useEffect(() => {
     if (!pending) return;
     const result = state.previews?.find(p => p.id === pending);
@@ -54,10 +59,10 @@ export function CharacterEditor({ initial, state, catalog, active = true, close,
   }
   async function generate() {
     setRequesting(true); setError('');
-    try { const id = await call<string>('character.preview', character); setTemporary(ids => [...ids, id]); setPending(id); }
+    try { const id = await call<string>('character.preview', { ...character, settings: activeSettings }); setTemporary(ids => [...ids, id]); setPending(id); }
     catch (e) { setError(formatCallError(t, e)); } finally { setRequesting(false); }
   }
-  const invalid = !character.name.trim() ? '@yovoice.library.nameRequired' : character.name.length > 120 ? '@yovoice.character.nameLimit' : character.demoText.length > 2000 ? '@yovoice.library.textLimit' : '';
+  const invalid = character.performances?.some(p => !p.name.trim() || p.name.length > 120 || character.performances!.filter(v => v.name.trim().toLowerCase() === p.name.trim().toLowerCase()).length > 1) ? '@yovoice.performance.invalid' : !character.name.trim() ? '@yovoice.library.nameRequired' : character.name.length > 120 ? '@yovoice.character.nameLimit' : character.demoText.length > 2000 ? '@yovoice.library.textLimit' : '';
   const existing = state.characters?.find(c => c.id === initial.id);
   const changed = stableJSON(character) !== stableJSON(existing ?? initial);
   const preview = character.preview;
@@ -76,16 +81,28 @@ export function CharacterEditor({ initial, state, catalog, active = true, close,
       }
     }}><Layout height="fill" padding={0} content={<Studio showInspector={showInspector} onShowInspector={() => setShowInspector(true)}
       title={<input className="document-title" aria-label={t('@yovoice.character.name')} placeholder={t('@yovoice.character.name')} value={character.name} onChange={event => setCharacter(c => ({ ...c, name: event.target.value }))} />}
-      actions={editorActions} inspector={<Inspector draft={draft} state={state} catalog={catalog} change={change} chooseVoice={() => setChoosing('voice')} chooseEmotion={() => setChoosing('emotion')} play={value => setTrack({ ...value, playRequest: performance.now() })} generate={() => void generate()} cancel={() => {}} settings={() => settings(draft.modelId)} advanced={advanced} setAdvanced={setAdvanced} close={() => setShowInspector(false)} allowModelManagement generationAction={previewAction} libraryActions={<>
+      actions={editorActions} inspector={<Inspector performanceOnly={!!selectedPerformance} draft={draft} state={state} catalog={catalog} change={change} chooseVoice={() => setChoosing('voice')} chooseEmotion={() => setChoosing('emotion')} play={value => setTrack({ ...value, playRequest: performance.now() })} generate={() => void generate()} cancel={() => {}} settings={() => settings(draft.modelId)} advanced={advanced} setAdvanced={setAdvanced} close={() => setShowInspector(false)} allowModelManagement generationAction={previewAction} libraryActions={<>
+        <HStack gap={2} vAlign="end">
+          <Selector label={t('@yovoice.performance.label')} width="100%" value={performanceId} isDisabled={editingBusy} options={[{ value: '', label: t('@yovoice.performance.default') }, ...(character.performances ?? []).map(p => ({ value: p.id, label: p.name }))]} onChange={id => { setPerformanceId(id); setTrack(null); }} />
+          <Button size="sm" isIconOnly icon={<Plus />} label={t('@yovoice.performance.add')} isDisabled={editingBusy || (character.performances?.length ?? 0) >= 32} onClick={() => {
+            const id = crypto.randomUUID().replaceAll('-', '');
+            let n = 1; while (character.performances?.some(p => p.name === t('@yovoice.performance.numbered', { n }))) n++;
+            setCharacter(c => ({ ...c, performances: [...(c.performances ?? []), { id, name: t('@yovoice.performance.numbered', { n }), settings: activeSettings }] })); setPerformanceId(id); setTrack(null);
+          }} />
+        </HStack>
+        {selectedPerformance ? <HStack gap={2} vAlign="end">
+          <TextInput label={t('@yovoice.performance.name')} value={selectedPerformance.name} isDisabled={editingBusy} onChange={name => setCharacter(c => ({ ...c, performances: c.performances?.map(p => p.id === performanceId ? { ...p, name: name.slice(0, 120) } : p) }))} />
+          <Button size="sm" isIconOnly icon={<Trash2 />} label={t('@yovoice.performance.delete')} isDisabled={editingBusy} onClick={() => { setCharacter(c => ({ ...c, performances: c.performances?.filter(p => p.id !== performanceId) })); setPerformanceId(''); setTrack(null); }} />
+        </HStack> : null}
         {!state.models.some(m => m.id === character.settings.modelId) ? <Button label={t('@yovoice.create.manageModels')} onClick={() => settings(draft.modelId)} /> : null}
         {[character.settings.voiceId, character.settings.emotionVoiceId].some(id => id && !state.voices.some(v => v.id === id)) ? <p role="alert">{t('@yovoice.character.missingVoice')}</p> : null}
-        {character.settings.voiceId || character.settings.emotionVoiceId ? <Button size="sm" variant="secondary" label={t('@yovoice.character.clearReferences')} onClick={() => change({ voiceId: null, emotionVoiceId: null, referenceText: '' })} /> : null}
+        {!selectedPerformance && (character.settings.voiceId || character.settings.emotionVoiceId) ? <Button size="sm" variant="secondary" label={t('@yovoice.character.clearReferences')} onClick={() => change({ voiceId: null, emotionVoiceId: null, referenceText: '' })} /> : null}
       </>} />}>
       <textarea className="script-editor" aria-label={t('@yovoice.character.demo')} placeholder={t('@yovoice.character.example')} value={character.demoText} spellCheck={false} onChange={event => setCharacter(c => ({ ...c, demoText: event.target.value }))} />
       <HStack className="editor-status" hAlign="end"><small>{character.demoText.length} / 2000</small></HStack>
     </Studio>} footer={<LayoutFooter padding={0}><VStack gap={0}>
-      {previewStale(character) || (demoTrack && track) || invalid || error ? <HStack gap={3} paddingInline={4} paddingBlock={2} hAlign="between" vAlign="center" wrap="wrap">
-        {previewStale(character) ? <small role="status">{t('@yovoice.character.stale')}</small> : null}
+      {previewStale({ ...character, settings: activeSettings }) || (demoTrack && track) || invalid || error ? <HStack gap={3} paddingInline={4} paddingBlock={2} hAlign="between" vAlign="center" wrap="wrap">
+        {previewStale({ ...character, settings: activeSettings }) ? <small role="status">{t('@yovoice.character.stale')}</small> : null}
         {demoTrack && track ? <Button size="sm" variant="secondary" label={t('@yovoice.character.listen')} onClick={() => setTrack(null)} /> : null}
         {invalid ? <small role="alert" className="dialog-error">{t(invalid)}</small> : null}
         {error ? <small role="alert">{error.startsWith('@yovoice.') ? t(error) : error}</small> : null}

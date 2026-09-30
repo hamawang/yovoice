@@ -45,8 +45,8 @@ const advancedFields = [
   ['lengthPenalty', '@yovoice.create.lengthPenalty', -2, 2, 0.1],
 ] as const;
 
-export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEmotion, play, generate, cancel, settings, advanced, setAdvanced, close, embedded = false, libraryActions, generationAction, allowModelManagement = true }: {
-  embedded?: boolean; libraryActions?: ReactNode; generationAction?: ReactNode; allowModelManagement?: boolean;
+export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEmotion, play, generate, cancel, settings, advanced, setAdvanced, close, performanceOnly = false, embedded = false, libraryActions, generationAction, allowModelManagement = true }: {
+  performanceOnly?: boolean; embedded?: boolean; libraryActions?: ReactNode; generationAction?: ReactNode; allowModelManagement?: boolean;
   draft: Draft; state: State; catalog: ModelPackage[]; change: (patch: Partial<Draft>) => void; chooseVoice: () => void; chooseEmotion: () => void;
   play: (track: Track) => void; generate: () => void; cancel: () => void; settings: () => void; close: () => void; advanced: boolean; setAdvanced: (v: boolean) => void;
 }) {
@@ -81,16 +81,16 @@ export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEm
     : null}
     <VStack className={embedded ? undefined : "inspector-scroll"} gap={5}>
     {libraryActions}
-    <VStack className="inspector-actions" gap={3}>
+    {!performanceOnly ? <VStack className="inspector-actions" gap={3}>
       <h2 className="inspector-section-title">{t('@yovoice.create.model')}</h2>
       <Selector label={t('@yovoice.create.model')} isLabelHidden renderOption={option => <SelectorOption label={option.label} description={option.description} layout="inline" />} renderValue={option => option.label} className="model-selector" width="100%" value={draft.modelId} isDisabled={busy}
         options={[...catalog.map(model => ({ value: model.id, label: `${model.name} · ${model.precision}`, description: state.models.some(installed => installed.id === model.id) ? t('@yovoice.create.modelInstalled') : t('@yovoice.create.modelMissing') })), ...(embedded || !allowModelManagement ? [] : [{ value: 'manage', label: t('@yovoice.create.manageModels') }])]}
         onChange={modelId => { if (modelId === 'manage') { settings(); return; } change({ modelId, speaker: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family && !modelId.startsWith('kokoro-') ? draft.speaker : '', synthesisLanguage: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family ? draft.synthesisLanguage : 'auto', voiceDescription: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family ? draft.voiceDescription : '', language: modelId.startsWith('index-2.5') || ['zh', 'en'].includes(draft.language) ? draft.language : 'zh' }); }} />
 
-    </VStack>
+    </VStack> : null}
     <HStack className="inspector-heading" hAlign="between" vAlign="center"><h2 className="inspector-section-title">{t('@yovoice.create.voiceSettings')}</h2>{!embedded ? <Button label={t('@yovoice.create.backToScript')} className="inspector-toggle" variant="secondary" onClick={close} /> : null}</HStack>
-      {catalog.find(model => model.id === draft.modelId)?.family === 'kokoro_tts' ? <KokoroControls advanced={advanced} setAdvanced={setAdvanced} draft={draft} model={catalog.find(model => model.id === draft.modelId)!} change={change} /> : isReferenceModel(draft.modelId) ? <ReferenceControls advanced={advanced} setAdvanced={setAdvanced} draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} /> : isVoxModel(draft.modelId) ? <VoxControls draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} advanced={advanced} setAdvanced={setAdvanced} /> : <>
-      <ReferenceVoice voice={voice} choose={chooseVoice} play={play} />
+      {catalog.find(model => model.id === draft.modelId)?.family === 'kokoro_tts' ? <KokoroControls performanceOnly={performanceOnly} advanced={advanced} setAdvanced={setAdvanced} draft={draft} model={catalog.find(model => model.id === draft.modelId)!} change={change} /> : isReferenceModel(draft.modelId) ? <ReferenceControls performanceOnly={performanceOnly} advanced={advanced} setAdvanced={setAdvanced} draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} /> : isVoxModel(draft.modelId) ? <VoxControls performanceOnly={performanceOnly} draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} advanced={advanced} setAdvanced={setAdvanced} /> : <>
+      {!performanceOnly ? <ReferenceVoice voice={voice} choose={chooseVoice} play={play} /> : null}
       <VStack gap={3}>
         <h3>{t('@yovoice.create.expression')}</h3>
         <SegmentedControl size="sm" label={t('@yovoice.create.expression')} value={draft.mode} onChange={mode => change({ mode: mode as Mode })} layout="fill">{modes.map(id => <SegmentedControlItem key={id} value={id} label={t(`@yovoice.create.mode.${id}`)} />)}</SegmentedControl>

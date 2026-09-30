@@ -59,6 +59,27 @@ func (w *Workbench) libraryCall(method string, data json.RawMessage) (any, error
 				return nil, Err(MsgErrVoiceRequired, nil)
 			}
 		}
+		if len(c.Performances) > 32 {
+			return nil, Err(MsgErrCharacterInvalid, nil)
+		}
+		ids := map[string]bool{}
+		names := map[string]bool{}
+		for i := range c.Performances {
+			p := &c.Performances[i]
+			p.Name = strings.TrimSpace(p.Name)
+			name := strings.ToLower(p.Name)
+			if !validID(p.ID) || p.Name == "" || textLen(p.Name) > 120 || ids[p.ID] || names[name] {
+				return nil, Err(MsgErrCharacterInvalid, nil)
+			}
+			ids[p.ID], names[name] = true, true
+			p.Settings = c.Settings.performanceSettings(p)
+			if err := Validate(Draft{ID: c.ID, Title: c.Name, Text: text, SynthesisSettings: p.Settings}); err != nil {
+				return nil, err
+			}
+			if p.Settings.EmotionVoiceID != nil && !slices.ContainsFunc(state.Voices, func(v Voice) bool { return v.ID == *p.Settings.EmotionVoiceID }) {
+				return nil, Err(MsgErrVoiceRequired, nil)
+			}
+		}
 		index := slices.IndexFunc(state.Characters, func(v Character) bool { return v.ID == c.ID })
 		c.CreatedAt = time.Now().UTC()
 		var old *CharacterPreview

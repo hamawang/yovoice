@@ -18,7 +18,7 @@ import { call, subscribe, isDesktop } from '../shared/lib/client';
 import { isKokoroModel, isReferenceModel, isVoxModel, requiresVoice, projectKind, createDraft, emptyState, formatSize, type Activity, type Draft, type State, type ModelPackage, type Voice, type Generation, type Track } from '../shared/workbench';
 import { CharacterEditor, CharacterLibrary } from '../features/library/characters';
 import { VoiceEditor } from '../features/library/voice-editor';
-import { synthesisSettings, stableJSON, type Character } from '../shared/workbench';
+import { synthesisSettings, stableJSON, performanceSettings, cueSettings, type Character } from '../shared/workbench';
 import { SubtitleImport, SubtitleEditor, SpeakerAvatar } from '../features/create/subtitles';
 import { Inspector } from '../features/create/inspector';
 const Settings = lazy(() => import('../features/settings/settings').then(module => ({ default: module.Settings })));
@@ -322,12 +322,17 @@ function WorkbenchChrome(props: {
   const selectedCue = cueSelection?.draftId === draft.id ? Math.min(cueSelection.index, (draft.subtitles?.cues.length ?? 1) - 1) : 0;
   const activeCue = draft.subtitles?.cues[selectedCue];
   const activeSpeaker = draft.subtitles?.speakers.find(speaker => speaker.id === activeCue?.speakerId) ?? draft.subtitles?.speakers[0];
-  const inspectorDraft = activeSpeaker ? { ...draft, ...activeSpeaker.settings, text: activeCue?.text ?? '' } : draft;
+  const inspectorDraft = activeSpeaker ? { ...draft, ...(activeCue ? cueSettings(draft, activeCue) : activeSpeaker.settings), text: activeCue?.text ?? '' } : draft;
   const selectCue = (index: number) => setCueSelection(current => ({ draftId: draft.id, index, revision: (current?.revision ?? 0) + 1 }));
-  // 右侧参数只写入当前说话人；正文标签只修改当前句子。
+  // 已选演绎只修改当前句子的快照，默认参数仍归当前说话人。
   const changeSpeaker = (patch: Partial<Draft>) => setDraft(current => {
-    if (!activeSpeaker || !current.subtitles || current.id !== draft.id) return { ...current, ...patch };
+    if (!activeSpeaker || !current.subtitles || current.id !== draft.id) return { ...current, ...patch, performance: current.performance ? { ...current.performance, settings: synthesisSettings({ ...current, ...patch }) } : undefined };
     const { text, ...settings } = patch;
+    if (activeCue?.performance) {
+      const cues = current.subtitles.cues.map((cue, index) => index === selectedCue ? { ...cue, text: text ?? cue.text, performance: { ...cue.performance!, settings: performanceSettings(activeSpeaker.settings ?? synthesisSettings(current), { ...cue.performance!, settings: { ...cueSettings(current, cue), ...settings } }) } } : cue);
+      const joined = cues.map(c => c.text).join('\n');
+      return joined.length > 12000 ? current : { ...current, text: joined, subtitles: { ...current.subtitles, cues } };
+    }
     const cues = current.subtitles.cues.map((cue, index) => index === selectedCue && text !== undefined ? { ...cue, text } : cue);
     const joined = cues.map(cue => cue.text).join('\n');
     if (joined.length > 12000) return current;
@@ -348,8 +353,8 @@ function WorkbenchChrome(props: {
   const selectedCharacter = draft.characterId ?? null;
   const applyCharacter = (c: Character) => {
     if (activeSpeaker) {
-      setDraft(current => ({ ...current, subtitles: { ...current.subtitles!, speakers: current.subtitles!.speakers.map(s => s.id === activeSpeaker.id ? { ...s, characterId: c.id, settings: structuredClone(c.settings) } : s) } }));
-    } else { change({ ...c.settings, characterId: c.id }); }
+      setDraft(current => ({ ...current, subtitles: { ...current.subtitles!, cues: current.subtitles!.cues.map(cue => cue.speakerId === activeSpeaker.id ? { ...cue, performance: undefined } : cue), speakers: current.subtitles!.speakers.map(s => s.id === activeSpeaker.id ? { ...s, characterId: c.id, settings: structuredClone(c.settings) } : s) } }));
+    } else { change({ ...c.settings, characterId: c.id, performance: undefined }); }
   };
   const editCharacter = (character: Character) => { if (characterEditor) { setPage('characters'); return; } characterOrigin.current = page === 'create' ? { draftId: draft.id, speakerId: activeSpeaker?.id ?? '' } : null; characterReturnPage.current = page; setCharacterEditor(character); setPage('characters'); };
   const openCharacter = () => {
@@ -362,7 +367,7 @@ function WorkbenchChrome(props: {
   async function applyToTarget(voice: Character, draftId: string, speakerId: string) {
     const source = draftId === 'new' ? { ...createDraft(false, state.preferences.uiLocale), kind: 'text' as const } : projectList.find(d => d.id === draftId);
     if (!source || (source.subtitles && !source.subtitles.speakers.some(s => s.id === speakerId))) throw new Error('@yovoice.error.draftIDInvalid');
-    const next = source.subtitles ? { ...source, subtitles: { ...source.subtitles, speakers: source.subtitles.speakers.map(s => s.id === speakerId ? { ...s, characterId: voice.id, settings: structuredClone(voice.settings) } : s) } } : { ...source, ...structuredClone(voice.settings), characterId: voice.id };
+    const next = source.subtitles ? { ...source, subtitles: { ...source.subtitles, cues: source.subtitles.cues.map(cue => cue.speakerId === speakerId ? { ...cue, performance: undefined } : cue), speakers: source.subtitles.speakers.map(s => s.id === speakerId ? { ...s, characterId: voice.id, settings: structuredClone(voice.settings) } : s) } } : { ...source, ...structuredClone(voice.settings), characterId: voice.id, performance: undefined };
     if (draftId === draft.id) { await persistDraft(next); setDraft(withCueIds(next)); setPage('create'); }
     else await newDraft(next);
     if (next.subtitles) setCueSelection(current => ({ draftId: next.id, index: Math.max(0, next.subtitles!.cues.findIndex(c => c.speakerId === speakerId)), revision: (current?.revision ?? 0) + 1 }));
@@ -390,11 +395,21 @@ function WorkbenchChrome(props: {
   const dateOpts: Intl.DateTimeFormatOptions = { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
   const editorFooter = (controls?: ReactNode) => <HStack className="editor-status" hAlign="between" vAlign="center" gap={2} wrap="wrap"><HStack gap={1} vAlign="center">{projectKind(draft) === 'story' ? <SubtitleImport onError={onError} onImport={async (title, subtitles) => { await newDraft({ ...createDraft(false, state.preferences.uiLocale), ...synthesisSettings(draft), kind: 'story', title, text: subtitles.cues.map(c => c.text).join('\n'), subtitles }); }} /> : null}{controls}</HStack><HStack vAlign="center" gap={4}><small className="saved"><Check size={14} />{saveFailed ? <Button size="sm" label={t('@yovoice.app.saveFailed')} onClick={() => run(() => persistDraft(draft))} /> : saving ? t('@yovoice.app.saving') : t('@yovoice.app.saved')}</small><small>{t('@yovoice.app.charCount', { count: Array.from(draft.text).length })}</small></HStack></HStack>;
   const sidebar = <SidebarNav page={page} setPage={setPage} newDraft={<NewProject locale={state.preferences.uiLocale} create={newDraft} onError={onError} button={{ 'data-testid': 'nav-new', className: 'new-project', width: '100%', size: 'md' }} />} state={state} draft={draft} selectDraft={selectDraft} removeDraft={setDeleteTarget} navigation={navigation} />;
-  const inspector = <Inspector libraryActions={<VStack gap={2}>
+  const currentCharacter = state.characters.find(c => c.id === (activeSpeaker?.characterId ?? selectedCharacter));
+  const currentPerformance = activeSpeaker ? activeCue?.performance : draft.performance;
+  const performances = currentCharacter?.performances ?? [];
+  const inspector = <Inspector performanceOnly={!!currentPerformance} libraryActions={<VStack gap={2}>
     {activeSpeaker ? <HStack gap={2} vAlign="center"><SpeakerAvatar seed={activeSpeaker.characterId ?? `${draft.id}:${activeSpeaker.id}`} /><h3>{activeSpeaker.sourceName || t('@yovoice.subtitle.speaker', { n: draft.subtitles!.speakers.indexOf(activeSpeaker) + 1 })}</h3></HStack> : null}
     <Selector label={t('@yovoice.character.choose')} isLabelHidden placeholder={t('@yovoice.character.choose')} value={activeSpeaker?.characterId ?? selectedCharacter ?? ''}
       options={[...state.characters.map(c => ({ value: c.id, label: c.name })), ...(state.characters.length ? [{ type: 'divider' as const }] : []), { value: 'new-voice', label: t('@yovoice.character.new'), icon: Plus }]}
       onChange={id => { if (id === 'new-voice') { createVoice(); return; } const voice = state.characters.find(c => c.id === id); if (voice) applyCharacter(voice); }} />
+    {performances.length || currentPerformance ? <Selector label={t('@yovoice.performance.label')} value={currentPerformance?.id ?? ''}
+      options={[{ value: '', label: t('@yovoice.performance.default'), disabled: !activeSpeaker && !currentCharacter }, ...performances.map(p => ({ value: p.id, label: p.name })), ...(currentPerformance && !performances.some(p => p.id === currentPerformance.id) ? [{ value: currentPerformance.id, label: currentPerformance.name }] : [])]}
+      onChange={id => {
+        const performance = structuredClone(performances.find(p => p.id === id));
+        if (activeSpeaker) setDraft(current => ({ ...current, subtitles: { ...current.subtitles!, cues: current.subtitles!.cues.map((cue, index) => index === selectedCue ? { ...cue, performance } : cue) } }));
+        else if (currentCharacter) change({ ...performanceSettings(currentCharacter.settings, performance), performance });
+      }} /> : null}
   </VStack>} catalog={catalog} close={() => setShowInspector(false)} draft={inspectorDraft} state={state} change={changeSpeaker} chooseVoice={() => setVoicePicker('voice')} chooseEmotion={() => setVoicePicker('emotion')} play={audition} generate={generate} cancel={() => run(() => call('operation.cancel'))} settings={() => openSettings(inspectorDraft.modelId)} advanced={advanced} setAdvanced={setAdvanced} />;
   return <VStack className={`workbench ${isDesktop ? 'desktop' : 'preview'}`} style={{ '--app-nav': `${navigation.size}px` } as CSSProperties} gap={0}>
     {!isDesktop ? <HStack as="header" className="browser-titlebar" gap={2} vAlign="center"><Button label={navigation.isCollapsed ? t('@yovoice.app.expandSidebar') : t('@yovoice.app.collapseSidebar')} isIconOnly variant="ghost" size="sm" icon={<PanelLeft size={17} />} aria-expanded={!navigation.isCollapsed} onClick={toggleSidebar} /><b>yovoice</b><small>{t('@yovoice.app.browserPreview')}</small></HStack> : null}
@@ -444,7 +459,7 @@ function WorkbenchChrome(props: {
     {deleteTarget ? <ConfirmDelete title={t('@yovoice.app.deleteProjectTitle')} description={t('@yovoice.app.deleteProjectBody', { title: deleteTarget.title })}
       confirmLabel={t('@yovoice.app.deleteProjectConfirm')} busy={deleting} error={deleteError.startsWith('@yovoice.') ? t(deleteError) : deleteError} onClose={() => setDeleteTarget(null)} onConfirm={() => void deleteDraft()} /> : null}
     {voiceEditor ? <VoiceEditor item={voiceEditor} close={() => setVoiceEditor(null)} /> : null}
-    {voicePicker ? <Suspense fallback={<p role="status">{t('@yovoice.app.loadingVoicePicker')}</p>}><VoicePicker adding={voicePicker === 'add'} voices={state.voices} onClose={() => setVoicePicker(null)} onSelect={voice => { if (activeSpeaker && voicePicker !== 'add') { changeSpeaker(voicePicker === 'emotion' ? { emotionVoiceId: voice.id } : { voiceId: voice.id, referenceText: voice.referenceText ?? '' }); setVoicePicker(null); } else selectVoice(voice); }} /></Suspense> : null}
+    {voicePicker ? <Suspense fallback={<p role="status">{t('@yovoice.app.loadingVoicePicker')}</p>}><VoicePicker adding={voicePicker === 'add'} voices={state.voices} onClose={() => setVoicePicker(null)} onSelect={voice => { if ((activeSpeaker || draft.performance) && voicePicker !== 'add') { changeSpeaker(voicePicker === 'emotion' ? { emotionVoiceId: voice.id } : { voiceId: voice.id, referenceText: voice.referenceText ?? '' }); setVoicePicker(null); } else selectVoice(voice); }} /></Suspense> : null}
     {pronunciation ? <AppDialog title={t('@yovoice.app.pronunciationTitle')} width={480} onClose={() => setPronunciation(null)} actions={<><Button label={t('@yovoice.action.cancel')} onClick={() => setPronunciation(null)} /><Button label={t('@yovoice.app.pronunciationApply')} variant="primary" isDisabled={!pronunciation.sound.trim()} onClick={() => { const { start, end, word, sound } = pronunciation; const replacement = draft.modelId.startsWith('index-2.5') ? `<${word}|${sound.trim()}>` : sound.trim(); change({ text: draft.text.slice(0, start) + replacement + draft.text.slice(end) }); setPronunciation(null); requestAnimationFrame(() => { editor.current?.focus(); editor.current?.setSelectionRange(start + replacement.length, start + replacement.length); }); }} /></>}><p>{t('@yovoice.app.pronunciationBody', { word: pronunciation.word })}</p><TextInput label={draft.modelId.startsWith('index-2.5') ? t('@yovoice.app.pronunciationLabel25') : t('@yovoice.app.pronunciationLabel')} value={pronunciation.sound} onChange={sound => setPronunciation({ ...pronunciation, sound })} placeholder={t('@yovoice.app.pronunciationPlaceholder')} /></AppDialog> : null}
   </VStack>;
 }

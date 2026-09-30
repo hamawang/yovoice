@@ -120,7 +120,7 @@ export function SubtitleEditor({ draft, characters, change, renderFooter, select
             onChange={id => {
               const character = characters.find(c => c.id === id);
               if (id && !character) return;
-              update({ ...document, speakers: document.speakers.map(s => s.id === speaker.id ? { ...s, characterId: id || undefined, settings: character ? structuredClone(character.settings) : undefined } : s) });
+              update({ ...document, cues: document.cues.map(c => c.speakerId === speaker.id ? { ...c, performance: undefined } : c), speakers: document.speakers.map(s => s.id === speaker.id ? { ...s, characterId: id || undefined, settings: character ? structuredClone(character.settings) : undefined } : s) });
             }} />
         </HStack>)}
       </VStack>
@@ -130,7 +130,7 @@ export function SubtitleEditor({ draft, characters, change, renderFooter, select
         const index = page * 50 + offset;
         const speaker = document.speakers.find(s => s.id === cue.speakerId)!;
         return <HStack key={cue.id ?? index} data-cue-index={index} className="subtitle-cue" data-selected={selectedCue === index} data-playing={playingCue === index} onFocusCapture={() => selectCue(index)} onClick={() => selectCue(index)} gap={3} vAlign="start">
-          <DropdownMenu presentation="popover" hasChevron={false} menuWidth="max-content" button={{ size: 'sm', variant: 'ghost', isIconOnly: true, className: 'subtitle-speaker-trigger', label: t('@yovoice.subtitle.lineSpeaker', { n: index + 1 }), icon: <SpeakerAvatar seed={speaker.characterId ?? `${draft.id}:${speaker.id}`} /> }} items={document.speakers.map((s, i) => ({ id: s.id, label: label(i), description: s.sourceName || undefined, icon: <SpeakerAvatar seed={s.characterId ?? `${draft.id}:${s.id}`} />, onClick: () => update({ ...document, cues: document.cues.map((c, j) => j === index ? { ...c, speakerId: s.id } : c) }) }))} />
+          <DropdownMenu presentation="popover" hasChevron={false} menuWidth="max-content" button={{ size: 'sm', variant: 'ghost', isIconOnly: true, className: 'subtitle-speaker-trigger', label: t('@yovoice.subtitle.lineSpeaker', { n: index + 1 }), icon: <SpeakerAvatar seed={speaker.characterId ?? `${draft.id}:${speaker.id}`} /> }} items={document.speakers.map((s, i) => ({ id: s.id, label: label(i), description: s.sourceName || undefined, icon: <SpeakerAvatar seed={s.characterId ?? `${draft.id}:${s.id}`} />, onClick: () => update({ ...document, cues: document.cues.map((c, j) => j === index ? { ...c, speakerId: s.id, performance: s.id === c.speakerId ? c.performance : undefined } : c) }) }))} />
           {cue.text.trim() && statuses.get(cue.id) !== 'ready' ? <i className="cue-audio-status" data-status={statuses.get(cue.id)} role="img" aria-label={t(`@yovoice.timeline.${statuses.get(cue.id)}Cue`)} title={t(`@yovoice.timeline.${statuses.get(cue.id)}Cue`)} /> : null}
           <VStack gap={0} className="grow">
             {showTimes ? <small className="subtitle-time">{timestamp(cue.start)} – {timestamp(cue.end)}</small> : null}

@@ -1,5 +1,5 @@
 import catalog from './catalog.json';
-import { emptyState, type AudioAsset, type Draft, type State, type Voice, type Preferences, type Character, type SynthesisSettings } from '../workbench';
+import { performanceSettings, emptyState, type AudioAsset, type Draft, type State, type Voice, type Preferences, type Character, type SynthesisSettings } from '../workbench';
 import { encodeWav, toBase64 } from './sound';
 import { CallError, parseCallError } from './call-error';
 
@@ -44,6 +44,9 @@ export async function call<T = unknown>(method: string, data: unknown = {}): Pro
     const character = structuredClone(data as Character);
     if (!character.name.trim() || character.name.length > 120 || character.demoText.length > 2000) throw new CallError('@yovoice.error.characterInvalid');
     if ([character.settings.voiceId, character.settings.emotionVoiceId].some(id => id && !preview.voices.some(v => v.id === id))) throw new CallError('@yovoice.error.voiceRequired');
+    if ((character.performances?.length ?? 0) > 32 || character.performances?.some((p, i, all) => !/^[a-f0-9]{32}$/i.test(p.id) || !p.name.trim() || p.name.trim().length > 120 || all.some((v, j) => j !== i && (p.id === v.id || p.name.trim().toLowerCase() === v.name.trim().toLowerCase())))) throw new CallError('@yovoice.error.characterInvalid');
+    character.performances = character.performances?.map(p => ({ ...p, name: p.name.trim(), settings: performanceSettings(character.settings, p) }));
+    if (character.performances?.some(p => p.settings.emotionVoiceId && !preview.voices.some(v => v.id === p.settings.emotionVoiceId))) throw new CallError('@yovoice.error.voiceRequired');
     const index = preview.characters.findIndex(c => c.id === character.id);
     character.name = character.name.trim(); character.createdAt = index < 0 ? new Date().toISOString() : preview.characters[index].createdAt;
     character.updatedAt = new Date().toISOString();
@@ -89,8 +92,8 @@ export async function call<T = unknown>(method: string, data: unknown = {}): Pro
       if (kind === 'outputs' && preview.drafts.some(d => d.timeline?.tracks.some(t => t.clips.some(c => c.generationId === id)))) throw new CallError('@yovoice.timeline.inUse');
       if (kind === 'voices') {
         const uses = (s: SynthesisSettings) => s.voiceId === id || s.emotionVoiceId === id;
-        const draftUses = (d: Draft) => uses(d) || d.subtitles?.speakers.some(s => s.settings && uses(s.settings));
-        const names = [...preview.characters.filter(c => uses(c.settings)).map(c => c.name), ...preview.drafts.filter(draftUses).map(d => d.title), ...preview.history.filter(g => draftUses(g.settings)).map(g => g.title)];
+        const draftUses = (d: Draft) => uses(d) || (d.performance && uses(d.performance.settings)) || d.subtitles?.speakers.some(s => s.settings && uses(s.settings)) || d.subtitles?.cues.some(c => c.performance && uses(c.performance.settings));
+        const names = [...preview.characters.filter(c => uses(c.settings) || c.performances?.some(p => uses(p.settings)) || (c.preview && uses(c.preview.settings))).map(c => c.name), ...preview.drafts.filter(draftUses).map(d => d.title), ...preview.history.filter(g => draftUses(g.settings)).map(g => g.title)];
         if (names.length) throw new CallError('@yovoice.error.voiceReferenced', { names: names.join(', ') });
         preview.voices = preview.voices.filter(v => v.id !== id);
         preview.drafts = preview.drafts.map(d => ({ ...d, voiceId: d.voiceId === id ? null : d.voiceId, emotionVoiceId: d.emotionVoiceId === id ? null : d.emotionVoiceId }));

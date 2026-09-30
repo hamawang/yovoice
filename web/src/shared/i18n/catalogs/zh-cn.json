@@ -1990,5 +1990,26 @@
   },
   "@yovoice.timeline.packageLimit": {
     "defaultMessage": "工程超过 500 MB，请分章备份。"
+  },
+  "@yovoice.performance.label": {
+    "defaultMessage": "演绎方式"
+  },
+  "@yovoice.performance.default": {
+    "defaultMessage": "默认演绎"
+  },
+  "@yovoice.performance.add": {
+    "defaultMessage": "新增演绎"
+  },
+  "@yovoice.performance.numbered": {
+    "defaultMessage": "演绎 {n}"
+  },
+  "@yovoice.performance.name": {
+    "defaultMessage": "演绎名称"
+  },
+  "@yovoice.performance.delete": {
+    "defaultMessage": "删除演绎"
+  },
+  "@yovoice.performance.invalid": {
+    "defaultMessage": "演绎名称不能为空或重复，最多 120 字"
   }
 }

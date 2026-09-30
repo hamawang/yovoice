@@ -12,7 +12,8 @@ export interface SynthesisSettings {
   maxTokens: number; intervalSilenceMs: number; doSample: boolean; numBeams: number; lengthPenalty: number; seed: number | null;
 }
 export interface SubtitleSpeaker { id: string; sourceName: string; characterId?: string; settings?: SynthesisSettings }
-export interface SubtitleCue { id?: string; start: number; end: number; text: string; speakerId: string }
+export interface CharacterPerformance { id: string; name: string; settings: SynthesisSettings }
+export interface SubtitleCue { performance?: CharacterPerformance; id?: string; start: number; end: number; text: string; speakerId: string }
 export interface SubtitleDocument { speakers: SubtitleSpeaker[]; cues: SubtitleCue[] }
 export interface AudioClip { id: string; generationId?: string; assetId?: string; start: number; offset: number; duration: number; gainDb?: number }
 export interface AudioLane { id: string; name: string; muted: boolean; solo?: boolean; locked?: boolean; gainDb?: number; duckDb?: number; clips: AudioClip[] }
@@ -20,23 +21,32 @@ export interface AudioAsset { id: string; name: string; fileName: string; durati
 export interface AudioMarker { id: string; time: number; name: string }
 export interface AudioTimeline { markers?: AudioMarker[]; regenerateMode?: 'ripple' | 'preserve'; assets?: AudioAsset[]; acceptedGenerations?: string[]; tracks: AudioLane[] }
 export type ProjectKind = 'text' | 'story' | 'subtitle';
-export interface Draft extends SynthesisSettings { id: string; title: string; text: string; kind?: ProjectKind; characterId?: string; createdAt?: string; updatedAt?: string; subtitles?: SubtitleDocument; timeline?: AudioTimeline }
+export interface Draft extends SynthesisSettings { performance?: CharacterPerformance; id: string; title: string; text: string; kind?: ProjectKind; characterId?: string; createdAt?: string; updatedAt?: string; subtitles?: SubtitleDocument; timeline?: AudioTimeline }
 // 旧字幕作品沿用原始数据，统一归入故事。
 export const projectKind = (draft: Draft): 'text' | 'story' => draft.subtitles || draft.kind === 'story' || draft.kind === 'subtitle' ? 'story' : 'text';
 export interface CharacterPreview { id: string; fileName: string; duration: number; settings: SynthesisSettings; text: string }
-export interface Character { id: string; name: string; settings: SynthesisSettings; demoText: string; preview?: CharacterPreview; createdAt?: string; updatedAt?: string }
-export const synthesisSettings = ({ id: _id, title: _title, text: _text, kind: _kind, characterId: _characterId, createdAt: _createdAt, updatedAt: _updatedAt, subtitles: _subtitles, timeline: _timeline, ...settings }: Draft): SynthesisSettings => structuredClone(settings);
+export interface Character { performances?: CharacterPerformance[]; id: string; name: string; settings: SynthesisSettings; demoText: string; preview?: CharacterPreview; createdAt?: string; updatedAt?: string }
+export const synthesisSettings = ({ performance: _performance, id: _id, title: _title, text: _text, kind: _kind, characterId: _characterId, createdAt: _createdAt, updatedAt: _updatedAt, subtitles: _subtitles, timeline: _timeline, ...settings }: Draft): SynthesisSettings => structuredClone(settings);
 // 参数键的序列化顺序不影响试听是否过期。
 export const stableJSON = (value: unknown): string => JSON.stringify(value, (_, item) => item && typeof item === 'object' && !Array.isArray(item) ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
 // 与 Go 的可选字段默认值对齐，保留 seed=0 与自动随机种子的区别。
-const comparableSettings = (settings: SynthesisSettings) => ({ speaker: '', synthesisLanguage: '', omniSpeed: 0, voiceMode: '', voxMode: '', voiceDescription: '', referenceText: '', guidanceScale: 0, inferenceSteps: 0, modelOptions: {}, ...settings });
+const comparableSettings = (settings: SynthesisSettings) => ({ speaker: '', synthesisLanguage: '', omniSpeed: 0, voiceMode: '', voxMode: '', voiceDescription: '', referenceText: '', guidanceScale: 0, inferenceSteps: 0, modelOptions: {}, ...Object.fromEntries(Object.entries(settings).filter(([, value]) => value !== undefined)) });
 export const previewStale = (c: Character) => !!c.preview && (c.demoText !== c.preview.text || stableJSON(comparableSettings(c.settings)) !== stableJSON(comparableSettings(c.preview.settings)));
+// 演绎只覆盖表达参数，音色身份始终使用角色当前的基础配置。
+export function performanceSettings(base: SynthesisSettings, performance?: CharacterPerformance): SynthesisSettings {
+  if (!performance) return structuredClone(base);
+  const settings = structuredClone(performance.settings);
+  return { ...settings, modelId: base.modelId, voiceId: base.voiceId, speaker: base.speaker, voiceMode: base.voiceMode, voxMode: base.voxMode, referenceText: base.referenceText,
+    voiceDescription: base.modelId.includes('customvoice') || (isVoxModel(base.modelId) && base.voxMode === 'clone') ? settings.voiceDescription : base.voiceDescription };
+}
+export function cueSettings(draft: Draft, cue: SubtitleCue): SynthesisSettings {
+  return performanceSettings(draft.subtitles?.speakers.find(s => s.id === cue.speakerId)?.settings ?? synthesisSettings(draft), cue.performance);
+}
 export function cueAudioStatus(draft: Draft, history: Generation[], cue: SubtitleCue): 'missing' | 'stale' | 'ready' {
   const ids = new Set(draft.timeline?.tracks.flatMap(t => t.clips.map(c => c.generationId)) ?? []);
   const generation = history.find(g => ids.has(g.id) && g.segment?.cueId === cue.id);
   if (!generation) return 'missing';
-  const speaker = draft.subtitles?.speakers.find(s => s.id === cue.speakerId);
-  return generation.settings.text === cue.text && generation.segment?.speakerId === cue.speakerId && stableJSON(comparableSettings(synthesisSettings(generation.settings))) === stableJSON(comparableSettings(speaker?.settings ?? synthesisSettings(draft))) ? 'ready' : 'stale';
+  return generation.settings.text === cue.text && generation.segment?.speakerId === cue.speakerId && stableJSON(comparableSettings(synthesisSettings(generation.settings))) === stableJSON(comparableSettings(cueSettings(draft, cue))) ? 'ready' : 'stale';
 }
 export interface Voice { referenceText?: string; source?: string; sourceGenerationId?: string; id: string; name: string; fileName: string; duration: number }
 export interface ModelPackage { voices?: string[]; variant?: string; task?: string; family: string; id: string; name: string; version: string; precision: string; remotePath: string; size: number; sha256: string }

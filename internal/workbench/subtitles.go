@@ -9,7 +9,21 @@ import (
 	"time"
 )
 
-// subtitleDrafts 校验字幕关系，并为每句展开统一的说话人参数。
+// performanceSettings 保留角色音色身份，只应用所选演绎的表达参数。
+func (s SynthesisSettings) performanceSettings(p *CharacterPerformance) SynthesisSettings {
+	if p == nil {
+		return s
+	}
+	next := p.Settings
+	next.ModelID, next.VoiceID, next.Speaker = s.ModelID, s.VoiceID, s.Speaker
+	next.VoiceMode, next.VoxMode, next.ReferenceText = s.VoiceMode, s.VoxMode, s.ReferenceText
+	if !strings.Contains(s.ModelID, "customvoice") && !(strings.HasPrefix(s.ModelID, "voxcpm2-") && s.VoxMode == "clone") {
+		next.VoiceDescription = s.VoiceDescription
+	}
+	return next
+}
+
+// subtitleDrafts 校验字幕关系，并展开每句的说话人和演绎参数。
 func (d Draft) subtitleDrafts() ([]Draft, error) {
 	if d.Subtitles == nil {
 		return []Draft{d}, nil
@@ -50,6 +64,11 @@ func (d Draft) subtitleDrafts() ([]Draft, error) {
 		if speaker.Settings != nil {
 			next.SynthesisSettings = *speaker.Settings
 		}
+		if cue.Performance != nil && (cue.Performance.ID == "" || len(cue.Performance.ID) > 64 || textLen(cue.Performance.Name) > 120) {
+			return nil, bad
+		}
+		next.SynthesisSettings = next.SynthesisSettings.performanceSettings(cue.Performance)
+		next.Performance = cue.Performance
 		texts = append(texts, cue.Text)
 		drafts = append(drafts, next)
 	}

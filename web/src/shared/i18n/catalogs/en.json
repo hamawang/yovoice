@@ -1990,5 +1990,26 @@
   },
   "@yovoice.timeline.packageLimit": {
     "defaultMessage": "Project exceeds 500 MB. Back up chapters separately."
+  },
+  "@yovoice.performance.label": {
+    "defaultMessage": "Performance"
+  },
+  "@yovoice.performance.default": {
+    "defaultMessage": "Default"
+  },
+  "@yovoice.performance.add": {
+    "defaultMessage": "Add performance"
+  },
+  "@yovoice.performance.numbered": {
+    "defaultMessage": "Performance {n}"
+  },
+  "@yovoice.performance.name": {
+    "defaultMessage": "Performance name"
+  },
+  "@yovoice.performance.delete": {
+    "defaultMessage": "Delete performance"
+  },
+  "@yovoice.performance.invalid": {
+    "defaultMessage": "Use unique performance names of 1–120 characters"
   }
 }
