@@ -33,6 +33,13 @@ test('角色多种演绎独立配置，逐句选择与修改互不影响并持�
   await page.getByLabel('演绎名称', { exact: true }).fill('温柔');
   await page.getByRole('button', { name: '重命名演绎', exact: true }).click();
   await editor.getByLabel('情绪描述', { exact: true }).fill('温柔，轻声安慰');
+  const selectorBox = await editor.getByRole('combobox', { name: '演绎方式', exact: true }).evaluate(element => element.closest('.astryx-selector')!.getBoundingClientRect().toJSON());
+  for (const name of ['新增演绎', '演绎操作']) {
+    const box = (await editor.getByRole('button', { name, exact: true }).boundingBox())!;
+    expect(Math.abs(box.y - selectorBox.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.height - selectorBox.height)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.width - box.height)).toBeLessThanOrEqual(1);
+  }
   await page.screenshot({ path: info.outputPath('character-performances.png') });
   await editor.getByRole('button', { name: '保存角色', exact: true }).click();
   await page.locator('.recent-projects .project-link').first().click();
