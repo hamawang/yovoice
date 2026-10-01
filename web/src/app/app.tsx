@@ -398,7 +398,7 @@ function WorkbenchChrome(props: {
   const currentCharacter = state.characters.find(c => c.id === (activeSpeaker?.characterId ?? selectedCharacter));
   const currentPerformance = activeSpeaker ? activeCue?.performance : draft.performance;
   const performances = currentCharacter?.performances ?? [];
-  const inspector = <Inspector performanceOnly={!!currentPerformance} libraryActions={<VStack gap={2}>
+  const inspector = <Inspector libraryActions={<VStack gap={2}>
     {activeSpeaker ? <HStack gap={2} vAlign="center"><SpeakerAvatar seed={activeSpeaker.characterId ?? `${draft.id}:${activeSpeaker.id}`} /><h3>{activeSpeaker.sourceName || t('@yovoice.subtitle.speaker', { n: draft.subtitles!.speakers.indexOf(activeSpeaker) + 1 })}</h3></HStack> : null}
     <Selector label={t('@yovoice.character.choose')} isLabelHidden placeholder={t('@yovoice.character.choose')} value={activeSpeaker?.characterId ?? selectedCharacter ?? ''}
       options={[...state.characters.map(c => ({ value: c.id, label: c.name })), ...(state.characters.length ? [{ type: 'divider' as const }] : []), { value: 'new-voice', label: t('@yovoice.character.new'), icon: Plus }]}

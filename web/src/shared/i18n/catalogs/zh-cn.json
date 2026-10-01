@@ -2011,5 +2011,11 @@
   },
   "@yovoice.performance.invalid": {
     "defaultMessage": "演绎名称不能为空或重复，最多 120 字"
+  },
+  "@yovoice.performance.more": {
+    "defaultMessage": "演绎操作"
+  },
+  "@yovoice.performance.rename": {
+    "defaultMessage": "重命名演绎"
   }
 }

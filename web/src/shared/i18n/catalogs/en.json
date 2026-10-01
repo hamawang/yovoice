@@ -2011,5 +2011,11 @@
   },
   "@yovoice.performance.invalid": {
     "defaultMessage": "Use unique performance names of 1–120 characters"
+  },
+  "@yovoice.performance.more": {
+    "defaultMessage": "Performance actions"
+  },
+  "@yovoice.performance.rename": {
+    "defaultMessage": "Rename performance"
   }
 }

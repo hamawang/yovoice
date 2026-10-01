@@ -32,12 +32,9 @@ export const stableJSON = (value: unknown): string => JSON.stringify(value, (_, 
 // 与 Go 的可选字段默认值对齐，保留 seed=0 与自动随机种子的区别。
 const comparableSettings = (settings: SynthesisSettings) => ({ speaker: '', synthesisLanguage: '', omniSpeed: 0, voiceMode: '', voxMode: '', voiceDescription: '', referenceText: '', guidanceScale: 0, inferenceSteps: 0, modelOptions: {}, ...Object.fromEntries(Object.entries(settings).filter(([, value]) => value !== undefined)) });
 export const previewStale = (c: Character) => !!c.preview && (c.demoText !== c.preview.text || stableJSON(comparableSettings(c.settings)) !== stableJSON(comparableSettings(c.preview.settings)));
-// 演绎只覆盖表达参数，音色身份始终使用角色当前的基础配置。
+// 每种演绎保存独立的模型和参数快照。
 export function performanceSettings(base: SynthesisSettings, performance?: CharacterPerformance): SynthesisSettings {
-  if (!performance) return structuredClone(base);
-  const settings = structuredClone(performance.settings);
-  return { ...settings, modelId: base.modelId, voiceId: base.voiceId, speaker: base.speaker, voiceMode: base.voiceMode, voxMode: base.voxMode, referenceText: base.referenceText,
-    voiceDescription: base.modelId.includes('customvoice') || (isVoxModel(base.modelId) && base.voxMode === 'clone') ? settings.voiceDescription : base.voiceDescription };
+  return structuredClone(performance?.settings ?? base);
 }
 export function cueSettings(draft: Draft, cue: SubtitleCue): SynthesisSettings {
   return performanceSettings(draft.subtitles?.speakers.find(s => s.id === cue.speakerId)?.settings ?? synthesisSettings(draft), cue.performance);

@@ -46,7 +46,7 @@ export async function call<T = unknown>(method: string, data: unknown = {}): Pro
     if ([character.settings.voiceId, character.settings.emotionVoiceId].some(id => id && !preview.voices.some(v => v.id === id))) throw new CallError('@yovoice.error.voiceRequired');
     if ((character.performances?.length ?? 0) > 32 || character.performances?.some((p, i, all) => !/^[a-f0-9]{32}$/i.test(p.id) || !p.name.trim() || p.name.trim().length > 120 || all.some((v, j) => j !== i && (p.id === v.id || p.name.trim().toLowerCase() === v.name.trim().toLowerCase())))) throw new CallError('@yovoice.error.characterInvalid');
     character.performances = character.performances?.map(p => ({ ...p, name: p.name.trim(), settings: performanceSettings(character.settings, p) }));
-    if (character.performances?.some(p => p.settings.emotionVoiceId && !preview.voices.some(v => v.id === p.settings.emotionVoiceId))) throw new CallError('@yovoice.error.voiceRequired');
+    if (character.performances?.some(p => [p.settings.voiceId, p.settings.emotionVoiceId].some(id => id && !preview.voices.some(v => v.id === id)))) throw new CallError('@yovoice.error.voiceRequired');
     const index = preview.characters.findIndex(c => c.id === character.id);
     character.name = character.name.trim(); character.createdAt = index < 0 ? new Date().toISOString() : preview.characters[index].createdAt;
     character.updatedAt = new Date().toISOString();

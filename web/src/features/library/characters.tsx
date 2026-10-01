@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
-import { AudioLines, Pencil, Plus, Trash2 } from 'lucide-react';
+import { AudioLines, Ellipsis, Pencil, Plus, Trash2 } from 'lucide-react';
 import { AppDialog, ConfirmDelete } from '../../shared/ui/app-dialog';
 import { LibraryEmpty, LibraryEntry, LibraryPage } from './library-layout';
 import { Studio } from '../create/studio';
 import { Selector } from '../../shared/selector';
+import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack, Layout, LayoutFooter } from '@astryxdesign/core/Layout';
@@ -19,6 +20,7 @@ export function CharacterEditor({ initial, state, catalog, active = true, close,
   const t = useTranslator();
   const [character, setCharacter] = useState(() => structuredClone(initial));
   const [performanceId, setPerformanceId] = useState('');
+  const [rename, setRename] = useState<string | null>(null);
   const selectedPerformance = character.performances?.find(p => p.id === performanceId);
   const activeSettings = performanceSettings(character.settings, selectedPerformance);
   const [showInspector, setShowInspector] = useState(false);
@@ -33,7 +35,12 @@ export function CharacterEditor({ initial, state, catalog, active = true, close,
   const busy = state.activity?.status === 'running';
   const editingBusy = saving || requesting || !!pending || (busy && temporary.length > 0);
   const draft: Draft = { ...activeSettings, id: character.id, title: character.name, text: character.demoText };
-  const change = (patch: Partial<Draft>) => setCharacter(c => selectedPerformance ? { ...c, performances: c.performances?.map(p => p.id === performanceId ? { ...p, settings: performanceSettings(c.settings, { ...p, settings: { ...activeSettings, ...patch } }) } : p) } : { ...c, settings: synthesisSettings({ ...c.settings, id: c.id, title: c.name, text: c.demoText, ...patch }) });
+  const change = (patch: Partial<Draft>) => setCharacter(c => {
+    const settings = synthesisSettings({ ...draft, ...patch });
+    return { ...c, demoText: patch.text ?? c.demoText, ...(selectedPerformance
+      ? { performances: c.performances?.map(p => p.id === performanceId ? { ...p, settings } : p) }
+      : { settings }) };
+  });
   useEffect(() => {
     if (!pending) return;
     const result = state.previews?.find(p => p.id === pending);
@@ -81,7 +88,7 @@ export function CharacterEditor({ initial, state, catalog, active = true, close,
       }
     }}><Layout height="fill" padding={0} content={<Studio showInspector={showInspector} onShowInspector={() => setShowInspector(true)}
       title={<input className="document-title" aria-label={t('@yovoice.character.name')} placeholder={t('@yovoice.character.name')} value={character.name} onChange={event => setCharacter(c => ({ ...c, name: event.target.value }))} />}
-      actions={editorActions} inspector={<Inspector performanceOnly={!!selectedPerformance} draft={draft} state={state} catalog={catalog} change={change} chooseVoice={() => setChoosing('voice')} chooseEmotion={() => setChoosing('emotion')} play={value => setTrack({ ...value, playRequest: performance.now() })} generate={() => void generate()} cancel={() => {}} settings={() => settings(draft.modelId)} advanced={advanced} setAdvanced={setAdvanced} close={() => setShowInspector(false)} allowModelManagement generationAction={previewAction} libraryActions={<>
+      actions={editorActions} inspector={<Inspector draft={draft} state={state} catalog={catalog} change={change} chooseVoice={() => setChoosing('voice')} chooseEmotion={() => setChoosing('emotion')} play={value => setTrack({ ...value, playRequest: performance.now() })} generate={() => void generate()} cancel={() => {}} settings={() => settings(draft.modelId)} advanced={advanced} setAdvanced={setAdvanced} close={() => setShowInspector(false)} allowModelManagement generationAction={previewAction} libraryActions={<>
         <HStack gap={2} vAlign="end">
           <Selector label={t('@yovoice.performance.label')} width="100%" value={performanceId} isDisabled={editingBusy} options={[{ value: '', label: t('@yovoice.performance.default') }, ...(character.performances ?? []).map(p => ({ value: p.id, label: p.name }))]} onChange={id => { setPerformanceId(id); setTrack(null); }} />
           <Button size="sm" isIconOnly icon={<Plus />} label={t('@yovoice.performance.add')} isDisabled={editingBusy || (character.performances?.length ?? 0) >= 32} onClick={() => {
@@ -89,14 +96,14 @@ export function CharacterEditor({ initial, state, catalog, active = true, close,
             let n = 1; while (character.performances?.some(p => p.name === t('@yovoice.performance.numbered', { n }))) n++;
             setCharacter(c => ({ ...c, performances: [...(c.performances ?? []), { id, name: t('@yovoice.performance.numbered', { n }), settings: activeSettings }] })); setPerformanceId(id); setTrack(null);
           }} />
+          {selectedPerformance ? <DropdownMenu hasChevron={false} alignment="end" button={{ size: 'sm', isIconOnly: true, icon: <Ellipsis />, label: t('@yovoice.performance.more'), isDisabled: editingBusy }} items={[
+            { label: t('@yovoice.performance.rename'), icon: <Pencil />, onClick: () => setRename(selectedPerformance.name) },
+            { label: t('@yovoice.performance.delete'), icon: <Trash2 />, variant: 'destructive', onClick: () => { setCharacter(c => ({ ...c, performances: c.performances?.filter(p => p.id !== performanceId) })); setPerformanceId(''); setTrack(null); } },
+          ]} /> : null}
         </HStack>
-        {selectedPerformance ? <HStack gap={2} vAlign="end">
-          <TextInput label={t('@yovoice.performance.name')} value={selectedPerformance.name} isDisabled={editingBusy} onChange={name => setCharacter(c => ({ ...c, performances: c.performances?.map(p => p.id === performanceId ? { ...p, name: name.slice(0, 120) } : p) }))} />
-          <Button size="sm" isIconOnly icon={<Trash2 />} label={t('@yovoice.performance.delete')} isDisabled={editingBusy} onClick={() => { setCharacter(c => ({ ...c, performances: c.performances?.filter(p => p.id !== performanceId) })); setPerformanceId(''); setTrack(null); }} />
-        </HStack> : null}
-        {!state.models.some(m => m.id === character.settings.modelId) ? <Button label={t('@yovoice.create.manageModels')} onClick={() => settings(draft.modelId)} /> : null}
-        {[character.settings.voiceId, character.settings.emotionVoiceId].some(id => id && !state.voices.some(v => v.id === id)) ? <p role="alert">{t('@yovoice.character.missingVoice')}</p> : null}
-        {!selectedPerformance && (character.settings.voiceId || character.settings.emotionVoiceId) ? <Button size="sm" variant="secondary" label={t('@yovoice.character.clearReferences')} onClick={() => change({ voiceId: null, emotionVoiceId: null, referenceText: '' })} /> : null}
+        {!state.models.some(m => m.id === activeSettings.modelId) ? <Button label={t('@yovoice.create.manageModels')} onClick={() => settings(draft.modelId)} /> : null}
+        {[activeSettings.voiceId, activeSettings.emotionVoiceId].some(id => id && !state.voices.some(v => v.id === id)) ? <p role="alert">{t('@yovoice.character.missingVoice')}</p> : null}
+        {(activeSettings.voiceId || activeSettings.emotionVoiceId) ? <Button size="sm" variant="secondary" label={t('@yovoice.character.clearReferences')} onClick={() => change({ voiceId: null, emotionVoiceId: null, referenceText: '' })} /> : null}
       </>} />}>
       <textarea className="script-editor" aria-label={t('@yovoice.character.demo')} placeholder={t('@yovoice.character.example')} value={character.demoText} spellCheck={false} onChange={event => setCharacter(c => ({ ...c, demoText: event.target.value }))} />
       <HStack className="editor-status" hAlign="end"><small>{character.demoText.length} / 2000</small></HStack>
@@ -109,6 +116,10 @@ export function CharacterEditor({ initial, state, catalog, active = true, close,
       </HStack> : null}
       <Player track={track ?? demoTrack} suspended={!active || !!choosing} onError={setError} actions={existing ? <Button label={t('@yovoice.character.copy')} size="sm" isDisabled={editingBusy || !!invalid} onClick={() => void save(true)} /> : undefined} />
     </VStack></LayoutFooter>} /></VStack>
+    {rename !== null && selectedPerformance ? <AppDialog title={t('@yovoice.performance.rename')} onClose={() => setRename(null)} actions={<>
+      <Button label={t('@yovoice.action.cancel')} onClick={() => setRename(null)} />
+      <Button label={t('@yovoice.performance.rename')} variant="primary" isDisabled={!rename.trim() || character.performances?.some(p => p.id !== performanceId && p.name.trim().toLowerCase() === rename.trim().toLowerCase())} onClick={() => { setCharacter(c => ({ ...c, performances: c.performances?.map(p => p.id === performanceId ? { ...p, name: rename.trim() } : p) })); setRename(null); }} />
+    </>}><TextInput label={t('@yovoice.performance.name')} hasAutoFocus value={rename} onChange={name => setRename(name.slice(0, 120))} /></AppDialog> : null}
     {confirmClose ? <AppDialog title={t('@yovoice.library.unsaved')} onClose={() => setConfirmClose(false)} actions={<><Button label={t('@yovoice.library.continue')} onClick={() => setConfirmClose(false)} /><Button label={t('@yovoice.library.discard')} isDisabled={editingBusy} onClick={() => void finish(true)} /><Button label={t('@yovoice.library.save')} variant="primary" isDisabled={editingBusy || !!invalid} onClick={() => void save()} /></>}>{null}</AppDialog> : null}
     {choosing ? <Suspense fallback={<p role="status">{t('@yovoice.app.loadingVoicePicker')}</p>}><VoicePicker voices={state.voices} onClose={() => setChoosing(null)} onSelect={voice => { change(choosing === 'voice' ? { voiceId: voice.id, referenceText: voice.referenceText ?? '' } : { emotionVoiceId: voice.id }); setChoosing(null); }} /></Suspense> : null}
   </>;

@@ -9,18 +9,12 @@ import (
 	"time"
 )
 
-// performanceSettings 保留角色音色身份，只应用所选演绎的表达参数。
+// performanceSettings 优先使用该句演绎的完整模型和参数。
 func (s SynthesisSettings) performanceSettings(p *CharacterPerformance) SynthesisSettings {
-	if p == nil {
-		return s
+	if p != nil {
+		return p.Settings
 	}
-	next := p.Settings
-	next.ModelID, next.VoiceID, next.Speaker = s.ModelID, s.VoiceID, s.Speaker
-	next.VoiceMode, next.VoxMode, next.ReferenceText = s.VoiceMode, s.VoxMode, s.ReferenceText
-	if !strings.Contains(s.ModelID, "customvoice") && !(strings.HasPrefix(s.ModelID, "voxcpm2-") && s.VoxMode == "clone") {
-		next.VoiceDescription = s.VoiceDescription
-	}
-	return next
+	return s
 }
 
 // subtitleDrafts 校验字幕关系，并展开每句的说话人和演绎参数。

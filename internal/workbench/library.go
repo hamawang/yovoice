@@ -76,8 +76,10 @@ func (w *Workbench) libraryCall(method string, data json.RawMessage) (any, error
 			if err := Validate(Draft{ID: c.ID, Title: c.Name, Text: text, SynthesisSettings: p.Settings}); err != nil {
 				return nil, err
 			}
-			if p.Settings.EmotionVoiceID != nil && !slices.ContainsFunc(state.Voices, func(v Voice) bool { return v.ID == *p.Settings.EmotionVoiceID }) {
-				return nil, Err(MsgErrVoiceRequired, nil)
+			for _, id := range []*string{p.Settings.VoiceID, p.Settings.EmotionVoiceID} {
+				if id != nil && !slices.ContainsFunc(state.Voices, func(v Voice) bool { return v.ID == *id }) {
+					return nil, Err(MsgErrVoiceRequired, nil)
+				}
 			}
 		}
 		index := slices.IndexFunc(state.Characters, func(v Character) bool { return v.ID == c.ID })

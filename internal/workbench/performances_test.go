@@ -24,16 +24,25 @@ func TestCharacterPerformancesAndCueSnapshots(t *testing.T) {
 	angry.Settings.Mode = "reference"
 	angry.Settings.EmotionVoiceID = ptr(emotion.ID)
 	angry.Settings.EmotionStrength = .9
-	// 请求中的其他音色身份不能覆盖角色共用音色。
-	angry.Settings.VoiceID = ptr(newID())
+	// 不同演绎保留独立模型和音色参考。
+	angry.Settings.VoiceID = ptr(emotion.ID)
+	angry.Settings.VoiceMode = "clone"
+	angry.Settings.ReferenceText = "演绎参考"
 	angry.Settings.ModelID = "omnivoice-q8"
 	c := Character{ID: newID(), Name: "悟空", Settings: d.SynthesisSettings, Performances: []CharacterPerformance{angry}}
 	raw, _ := json.Marshal(c)
 	result, err := w.Call("character.save", raw)
 	must(t, err)
 	c = result.(Character)
-	if c.Performances[0].Settings.ModelID != d.ModelID || value(c.Performances[0].Settings.VoiceID) != voice.ID {
-		t.Fatal("演绎改变了音色身份")
+	if c.Performances[0].Settings.ModelID != "omnivoice-q8" || value(c.Performances[0].Settings.VoiceID) != emotion.ID {
+		t.Fatal("演绎独立模型和参数丢失")
+	}
+	invalid := c
+	invalid.Performances = append([]CharacterPerformance{}, c.Performances...)
+	invalid.Performances[0].Settings.VoiceID = ptr(newID())
+	raw, _ = json.Marshal(invalid)
+	if _, err = w.Call("character.save", raw); err == nil {
+		t.Fatal("允许不存在的演绎音色参考")
 	}
 	duplicate := c
 	duplicate.Performances = append(append([]CharacterPerformance{}, c.Performances...), c.Performances[0])
@@ -47,7 +56,7 @@ func TestCharacterPerformancesAndCueSnapshots(t *testing.T) {
 	must(t, w.SaveDraft(d))
 	parts, err := d.subtitleDrafts()
 	must(t, err)
-	if parts[0].Mode != d.Mode || parts[1].Mode != "reference" || parts[1].EmotionStrength != .9 || value(parts[1].VoiceID) != voice.ID {
+	if parts[0].Mode != d.Mode || parts[1].Mode != "reference" || parts[1].EmotionStrength != .9 || value(parts[1].VoiceID) != emotion.ID || parts[1].ModelID != "omnivoice-q8" {
 		t.Fatal("逐句演绎映射错误")
 	}
 	// 单片段重生成走实际任务调度，保存的是该句演绎参数。
@@ -56,7 +65,7 @@ func TestCharacterPerformancesAndCueSnapshots(t *testing.T) {
 	modelPath := filepath.Join(w.Store.Root, "model.gguf")
 	must(t, os.WriteFile(modelPath, []byte("test"), 0600))
 	must(t, w.Store.Update(func(s *State) {
-		s.Models = []InstalledModel{{ID: d.ModelID, Path: modelPath}}
+		s.Models = []InstalledModel{{ID: d.ModelID, Path: modelPath}, {ID: "omnivoice-q8", Path: modelPath}}
 		s.RuntimePath = &executable
 		s.RuntimeBackend = ptr("cpu")
 	}, true))
@@ -73,7 +82,7 @@ func TestCharacterPerformancesAndCueSnapshots(t *testing.T) {
 	if generated.Activity.Status != "completed" || len(generated.History) != 1 {
 		t.Fatal("单句生成失败", generated.Activity)
 	}
-	if generated.History[0].Settings.EmotionStrength != .9 || generated.History[0].Segment.CueID != "two" {
+	if generated.History[0].Settings.ModelID != "omnivoice-q8" || generated.History[0].Settings.EmotionStrength != .9 || generated.History[0].Segment.CueID != "two" {
 		t.Fatal("单句重生成未使用演绎快照")
 	}
 	c.Performances = nil

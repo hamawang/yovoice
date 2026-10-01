@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { cueAudioStatus, cueSettings, emptyState, synthesisSettings } from '../src/shared/workbench';
 
-test('角色多种演绎共用音色，逐句选择与修改互不影响并持久化', async ({ page }, info) => {
+test('角色多种演绎独立配置，逐句选择与修改互不影响并持久化', async ({ page }, info) => {
   const state = emptyState();
   const draft = state.drafts[0];
   const settings = synthesisSettings(draft);
@@ -18,12 +18,20 @@ test('角色多种演绎共用音色，逐句选择与修改互不影响并持�
   await page.getByRole('button', { name: '编辑角色', exact: true }).click();
   const editor = page.getByTestId('character-editor');
   await editor.getByRole('button', { name: '新增演绎', exact: true }).click();
-  await editor.getByLabel('演绎名称', { exact: true }).fill('愤怒');
+  await expect(editor.getByLabel('演绎名称', { exact: true })).toHaveCount(0);
+  await editor.getByRole('button', { name: '演绎操作', exact: true }).click();
+  await page.getByRole('menuitem', { name: '重命名演绎', exact: true }).click();
+  await page.getByLabel('演绎名称', { exact: true }).fill('愤怒');
+  await page.getByRole('button', { name: '重命名演绎', exact: true }).click();
   await editor.getByLabel('情绪描述', { exact: true }).fill('愤怒，坚定地大声说话');
-  await expect(editor.getByRole('combobox', { name: '模型', exact: true })).toHaveCount(0);
-  await expect(editor.getByRole('button', { name: '添加参考音频', exact: true })).toHaveCount(0);
+  await expect(editor.getByRole('combobox', { name: '模型', exact: true })).toBeVisible();
+  await expect(editor.getByRole('button', { name: '添加参考音频', exact: true })).toBeVisible();
   await editor.getByRole('button', { name: '新增演绎', exact: true }).click();
-  await editor.getByLabel('演绎名称', { exact: true }).fill('温柔');
+  await expect(editor.getByLabel('演绎名称', { exact: true })).toHaveCount(0);
+  await editor.getByRole('button', { name: '演绎操作', exact: true }).click();
+  await page.getByRole('menuitem', { name: '重命名演绎', exact: true }).click();
+  await page.getByLabel('演绎名称', { exact: true }).fill('温柔');
+  await page.getByRole('button', { name: '重命名演绎', exact: true }).click();
   await editor.getByLabel('情绪描述', { exact: true }).fill('温柔，轻声安慰');
   await page.screenshot({ path: info.outputPath('character-performances.png') });
   await editor.getByRole('button', { name: '保存角色', exact: true }).click();
@@ -54,7 +62,8 @@ test('角色多种演绎共用音色，逐句选择与修改互不影响并持�
   await page.getByRole('button', { name: '编辑角色', exact: true }).click();
   await editor.getByRole('combobox', { name: '演绎方式', exact: true }).click();
   await page.getByRole('option', { name: '温柔', exact: true }).click();
-  await editor.getByRole('button', { name: '删除演绎', exact: true }).click();
+  await editor.getByRole('button', { name: '演绎操作', exact: true }).click();
+  await page.getByRole('menuitem', { name: '删除演绎', exact: true }).click();
   await editor.getByRole('button', { name: '保存角色', exact: true }).click();
   await page.locator('.recent-projects .project-link').first().click();
   await page.getByLabel('第 1 句台词', { exact: true }).click();
@@ -75,23 +84,37 @@ test('演绎音频状态与后端可选字段一致', () => {
   expect(cueAudioStatus(d, [generation], cue)).toBe('stale');
 });
 
-test('语音项目选择 Qwen 演绎保留说话人并支持回到默认', async ({ page }) => {
+test('语音项目选择独立模型演绎并支持回到默认', async ({ page }) => {
   const state = emptyState();
   const d = state.drafts[0];
-  d.modelId = 'qwen3-tts-customvoice-q8'; d.speaker = 'Vivian'; d.voiceDescription = '平静'; d.characterId = 'b'.repeat(32);
-  state.characters = [{ id: d.characterId, name: '薇薇安', demoText: '', settings: synthesisSettings(d), performances: [{ id: 'c'.repeat(32), name: '开心', settings: { ...synthesisSettings(d), voiceDescription: '开心地说话', speaker: 'Ryan' } }] }];
+  d.modelId = 'index-2.5-q8'; d.speaker = 'Vivian'; d.voiceDescription = '平静'; d.characterId = 'b'.repeat(32);
+  state.characters = [{ id: d.characterId, name: '薇薇安', demoText: '', settings: synthesisSettings(d), performances: [{ id: 'c'.repeat(32), name: '开心', settings: synthesisSettings(d) }] }];
   await page.goto('/');
   await page.evaluate(state => localStorage.setItem('voice-workbench-v1', JSON.stringify(state)), state);
   await page.reload();
+  await page.getByTestId('nav-characters').click();
+  await page.getByRole('button', { name: '编辑角色', exact: true }).click();
+  const editor = page.getByTestId('character-editor');
+  await editor.getByRole('combobox', { name: '演绎方式', exact: true }).click();
+  await page.getByRole('option', { name: '开心', exact: true }).click();
+  await editor.getByRole('combobox', { name: '模型', exact: true }).click();
+  await page.getByRole('option', { name: /Qwen3-TTS 1.7B CustomVoice · Q8/ }).click();
+  await editor.getByRole('combobox', { name: '内置音色', exact: true }).click();
+  await page.getByRole('option', { name: /^Ryan/ }).click();
+  await editor.getByLabel('声音描述', { exact: true }).fill('开心地说话');
+  await editor.getByRole('button', { name: '保存角色', exact: true }).click();
+  await page.locator('.recent-projects .project-link').first().click();
   await page.getByRole('combobox', { name: '演绎方式', exact: true }).click();
   await page.getByRole('option', { name: '开心', exact: true }).click();
-  await expect(page.getByRole('combobox', { name: '模型', exact: true })).toHaveCount(0);
-  await page.getByLabel('风格指导（可选）', { exact: true }).fill('兴奋地说话');
+  await expect(page.getByRole('combobox', { name: '模型', exact: true })).toContainText('Qwen');
+  await page.getByLabel('声音描述', { exact: true }).fill('兴奋地说话');
   await expect(page.getByText('已保存', { exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel('风格指导（可选）', { exact: true })).toHaveValue('兴奋地说话');
+  await expect(page.getByLabel('声音描述', { exact: true })).toHaveValue('兴奋地说话');
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('voice-workbench-v1')!));
-  expect(saved.drafts[0].speaker).toBe('Vivian');
+  expect(saved.drafts[0].speaker).toBe('Ryan');
+  expect(saved.drafts[0].modelId).toBe('qwen3-tts-customvoice-q8');
+  expect(saved.characters[0].settings.modelId).toBe('index-2.5-q8');
   expect(saved.characters[0].performances[0].settings.voiceDescription).toBe('开心地说话');
   await page.getByRole('combobox', { name: '演绎方式', exact: true }).click();
   await page.getByRole('option', { name: '默认演绎', exact: true }).click();
