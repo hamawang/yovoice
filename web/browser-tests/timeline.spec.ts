@@ -258,7 +258,8 @@ test('分段音轨自动呈现、裁剪和删除持久化、按编辑结果导�
   expect(bytes.toString('ascii', 0, 4)).toBe('RIFF'); expect(bytes.readUInt32LE(24)).toBe(24000);
   expect(bytes.readUInt32LE(40) / 2 / 24000).toBe(4);
   expect(bytes.readInt16LE(44 + 12000 * 2)).toBeGreaterThan(8000);
-  expect(bytes.readInt16LE(44 + 36000 * 2)).toBe(0);
+  // 鼠标拖拽有像素取整误差，在静音区中间取样，避免正好落在 1.5 秒裁剪边界。
+  expect(bytes.readInt16LE(44 + 42000 * 2)).toBe(0);
   await page.screenshot({ path: testInfo.outputPath('segmented-timeline.png') });
   await page.getByRole('button', { name: '删除片段', exact: true }).click();
   await expect(page.locator('.multitrack-clip')).toHaveCount(1);
