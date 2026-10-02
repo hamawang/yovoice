@@ -1,0 +1,28 @@
+using System.Text.Json;
+using VoiceWorkbench.Desktop;
+
+static void Require(bool value) { if (!value) throw new Exception("保存与错误协议检查失败。"); }
+ServiceCallException failure;
+using (var document = JsonDocument.Parse("""{"code":"@yovoice.error.unknown","params":{"detail":"磁盘已满"}}""")) failure = new ServiceCallException(document.RootElement);
+Require(failure.Message.Contains("磁盘已满"));
+// 原文在文档释放后仍可序列化，前端能继续读取 code 和 params。
+Require(JsonSerializer.Serialize(new { error = failure.Wire }).Contains("params"));
+foreach (var json in new[] { "\"旧版错误\"", "{}", "42", "null", """{"code":"@yovoice.timeline.invalid"}""" })
+{
+    using var document = JsonDocument.Parse(json);
+    Require(new ServiceCallException(document.RootElement).Message.Length > 0);
+}
+string folder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(folder);
+try
+{
+    string path = Path.Combine(folder, "恢复.json");
+    const string draft = """{"id":"test","text":"尚未保存的台词","timeline":{"tracks":[]}}""";
+    DraftRecovery.Save(path, draft);
+    Require(File.ReadAllText(path) == draft);
+    try { DraftRecovery.Save(path, "null"); throw new Exception("不应覆盖有效备份。"); } catch (IOException) { }
+    Require(File.ReadAllText(path) == draft && Directory.GetFiles(folder).Length == 1);
+    try { DraftRecovery.Save(Path.Combine(folder, "missing", "backup.json"), draft); throw new Exception("备份失败必须阻止退出。"); } catch (IOException) { }
+}
+finally { Directory.Delete(folder, true); }
+Console.WriteLine("结构化错误保真、错误提示、恢复备份和备份失败保护检查通过。");

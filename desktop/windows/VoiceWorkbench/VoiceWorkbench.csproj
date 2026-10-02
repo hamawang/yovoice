@@ -6,4 +6,5 @@
   <ItemGroup><Content Include="../../../web/dist/**/*"><Link>web/%(RecursiveDir)%(Filename)%(Extension)</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></Content></ItemGroup>
   <ItemGroup><Content Include="install-update.ps1"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></Content></ItemGroup>
   <ItemGroup><Using Remove="System.Windows.Forms"/><Using Remove="System.Drawing"/></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="../../../web/src/shared/i18n/catalogs/zh-cn.json" LogicalName="yovoice.messages.zh-cn.json"/></ItemGroup>
 </Project>

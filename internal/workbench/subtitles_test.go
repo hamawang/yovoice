@@ -106,6 +106,14 @@ func TestSubtitleMappingAndGeneration(t *testing.T) {
 	}
 	d = state.Drafts[0]
 	d.Timeline = &AudioTimeline{Tracks: []AudioLane{{ID: "lane", Name: "台词", Clips: []AudioClip{{ID: "clip", GenerationID: first.ID, Duration: 1}}}}}
+	// 生成后自动保存及退出时重复保存都应保留正文、片段和生成记录。
+	must(t, w.SaveDraft(d))
+	must(t, w.SaveDraft(d))
+	reopened, err := NewStore(w.Store.Root)
+	must(t, err)
+	if len(reopened.Read().History) != 2 || reopened.Read().Drafts[0].Timeline.Tracks[0].Clips[0].GenerationID != first.ID {
+		t.Fatal("生成后保存丢失作品或音频记录")
+	}
 	must(t, w.generateAudio(d, "", first.Segment.CueID, "clip"))
 	w.mu.Lock()
 	done = w.done

@@ -67,7 +67,19 @@ public partial class MainWindow : Window
                 if (web?.CoreWebView2 is not null)
                 {
                     string json = await web.CoreWebView2.ExecuteScriptAsync("window.__workbenchDraft ?? null");
-                    if (json != "null") await service.CallAsync("draft.save", JsonSerializer.Deserialize<JsonElement>(json));
+                    if (json != "null")
+                    {
+                        try { await service.CallAsync("draft.save", JsonSerializer.Deserialize<JsonElement>(json)); }
+                        catch (Exception error)
+                        {
+                            if (!AppDialog.Show(this, "作品保存失败", error.Message + "\n\n可以备份当前作品后退出，或返回继续编辑。", "备份后退出", "返回编辑")) { shuttingDown = false; updater.CancelInstall(); return; }
+                            var backup = new SaveFileDialog { Filter = "作品恢复备份|*.json", DefaultExt = ".json", FileName = "yovoice-recovery-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".json", OverwritePrompt = true };
+                            if (backup.ShowDialog(this) != true) { shuttingDown = false; updater.CancelInstall(); return; }
+                            DraftRecovery.Save(backup.FileName, json);
+                            // 保存失败时仅退出，不继续执行更新安装。
+                            updater.CancelInstall();
+                        }
+                    }
                 }
                 await updater.PrepareInstallAsync();
                 await service.ShutdownAsync();
@@ -266,6 +278,7 @@ public partial class MainWindow : Window
             }
             Post(new { id, result });
         }
+        catch (ServiceCallException error) { Post(new { id, error = error.Wire }); }
         catch (Exception error) { Post(new { id, error = error.Message }); }
     }
     private void Post(object value) => PostJson(JsonSerializer.Serialize(value));

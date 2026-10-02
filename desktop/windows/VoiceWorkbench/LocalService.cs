@@ -80,7 +80,7 @@ public sealed class LocalService : IDisposable
         using var response = await client.SendAsync(request, timeout.Token);
         response.EnsureSuccessStatusCode();
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
-        if (json.RootElement.TryGetProperty("error", out var error)) throw new IOException(error.GetString());
+        if (json.RootElement.TryGetProperty("error", out var error) && error.ValueKind != JsonValueKind.Null) throw new ServiceCallException(error);
         return json.RootElement.GetProperty("result").Clone();
     }
     private async Task ReadEventsAsync()
